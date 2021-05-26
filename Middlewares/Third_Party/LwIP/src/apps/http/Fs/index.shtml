@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>ETHERNET CONTROL BLINDS</title>
+		<meta charset="utf-8" />
+		<meta http-equiv="refresh" content="5">
+	</head>
+	<body>
+		<h3>ETHERNET CONTROL BLINDS</h3>
+		<strong>Hello world!<strong>
+		<form method="get" action="/relay.cgi">
+			<!--#tag1-->Relay1<br>
+			<!--#tag2-->Relay2<br>
+			<!--#tag3-->Relay3<br>
+			<!--#tag4-->Relay4<br>
+			<!--#tag5-->Relay5<br>
+			<!--#tag6-->Relay6<br>
+			<!--#tag7-->Relay7<br>
+			<!--#tag8-->Relay8<br>
+			<br>
+			<input value="Send" type="submit">
+		</form>
+	</body>
+</html>
