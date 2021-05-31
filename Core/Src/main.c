@@ -130,6 +130,7 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 	if (iIndex == 0) {
 		for (int var = 0; var < num_relay_ch; ++var) {
 			HAL_GPIO_WritePin(Relay_Ports[var], Relay_Pins[var], GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin ,GPIO_PIN_RESET);
 			RelayStates[var] = false;
 		}
 	}
@@ -140,10 +141,11 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 			uint8_t channel;
 			sscanf(pcValue[i], "%"PRIu8"", &channel);
 			HAL_GPIO_WritePin(Relay_Ports[channel - 1], Relay_Pins[channel - 1], GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin ,GPIO_PIN_SET);
 			RelayStates[channel - 1] = true;
 		}
 	}
-	publish_relay_states();
+	//publish_relay_states();
 	// the extension .shtml for SSI to work
 	return "/index.shtml";
 

@@ -3,11 +3,10 @@
 	<head>
 		<title>ETHERNET CONTROL BLINDS</title>
 		<meta charset="utf-8" />
-		<meta http-equiv="refresh" content="5">
 	</head>
 	<body>
 		<h3>ETHERNET CONTROL BLINDS</h3>
-		<strong>Hello world!<strong>
+		<strong>Test<strong>
 		<form method="get" action="/relay.cgi">
 			<!--#tag1-->Relay1<br>
 			<!--#tag2-->Relay2<br>
