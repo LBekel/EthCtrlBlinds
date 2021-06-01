@@ -53,10 +53,16 @@
 #define MEM_ALIGNMENT 4
 /*----- Default Value for MEM_SIZE: 1600 ---*/
 #define MEM_SIZE 3000
-/*----- Default Value for MEMP_NUM_SYS_TIMEOUT: 5 ---*/
+/*----- Default Value for MEMP_NUM_SYS_TIMEOUT: 6 ---*/
 #define MEMP_NUM_SYS_TIMEOUT 10
 /*----- Value in opt.h for LWIP_ETHERNET: LWIP_ARP || PPPOE_SUPPORT -*/
 #define LWIP_ETHERNET 1
+/*----- Default Value for LWIP_AUTOIP: 0 ---*/
+#define LWIP_AUTOIP 1
+/*----- Default Value for LWIP_DHCP_AUTOIP_COOP: 0 ---*/
+#define LWIP_DHCP_AUTOIP_COOP 1
+/*----- Default Value for LWIP_DHCP_AUTOIP_COOP_TRIES: 9 ---*/
+#define LWIP_DHCP_AUTOIP_COOP_TRIES 1
 /*----- Value in opt.h for LWIP_DNS_SECURE: (LWIP_DNS_SECURE_RAND_XID | LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING | LWIP_DNS_SECURE_RAND_SRC_PORT) -*/
 #define LWIP_DNS_SECURE 7
 /*----- Value in opt.h for TCP_SND_QUEUELEN: (4*TCP_SND_BUF + (TCP_MSS - 1))/TCP_MSS -----*/
