@@ -15,6 +15,8 @@
 #include <stdio.h>
 
 
+
+
 //uint16_t Relay_Pins[] = { Relay1_Pin, Relay2_Pin, Relay3_Pin, Relay4_Pin,
 //		Relay5_Pin, Relay6_Pin, Relay7_Pin, Relay8_Pin };
 //
@@ -49,7 +51,7 @@ void mqtt_connect(mqtt_client_t *client)
     struct mqtt_connect_client_info_t ci;
     err_t err;
 
-    IP4_ADDR(&mqtt_server_ip_addr, 192, 168, 1, 2);
+    IP4_ADDR(&mqtt_server_ip_addr, 192, 168, 1, 3);
     //printf("IP Address: %s\r\n", ipaddr_ntoa(&mqtt_server_ip_addr));
     /* Setup an empty client info structure */
     memset(&ci, 0, sizeof(ci));
@@ -257,31 +259,36 @@ static void mqtt_pub_request_cb(void *arg, err_t result)
   * @param  argument: Not used
   * @retval None
   */
-void StartmqttTask(void *argument) {
-
+void StartmqttTask(void *argument)
+{
+	printf("\r\n\n\n\n\n\nStartmqttTask\r\n");
+	client = mqtt_client_new();
+	if(client == NULL){
+		printf("ERROR: New MQTT client space\r\n");
+	}
+	printf("Client %d.\r\n", client->conn_state);
 	/* Infinite loop */
 	for (;;)
 	{
+		if (&gnetif.ip_addr.addr != 0) //we need a IP Address to connect
+		{
 
-		/* while connected, publish */
-		if (mqtt_client_is_connected(client))
-		{
-			//publish_switchstate(&client, NULL);
-			check_inputs(client,false);
-			osDelay(10);
-		}
-		else
-		{
-//			printf("MQTT Disconnect.\r\n");
-//			if (client->conn_state == 0) {
-//				if (&gnetif.ip_addr.addr != 0) {
-//					printf("IP Address: %s\r\n", ipaddr_ntoa(&gnetif.ip_addr));
-//					mqtt_connect(client);
-//					//force publish actual inputstats
-//					check_inputs(client, true);
-//				}
-//			}
-			osDelay(1000);
+			if (mqtt_client_is_connected(client)) /* while connected, publish */
+			{
+				publish_relay_states();
+				//check_inputs(client,false);
+				osDelay(1000);
+			}
+			else
+			{
+				printf("MQTT Disconnect %d.\r\n", client->conn_state);
+				printf("IP Address: %s\r\n", ipaddr_ntoa(&gnetif.ip_addr));
+				mqtt_connect(client);
+				//force publish actual inputstats
+				//check_inputs(client, true);
+
+				osDelay(1000);
+			}
 		}
 	}
 }

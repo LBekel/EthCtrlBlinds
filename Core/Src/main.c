@@ -57,15 +57,15 @@ UART_HandleTypeDef huart1;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for mqttTask */
 osThreadId_t mqttTaskHandle;
 const osThreadAttr_t mqttTask_attributes = {
   .name = "mqttTask",
-  .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityNormal7,
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
 
@@ -245,7 +245,7 @@ int main(void)
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* creation of mqttTask */
-  //mqttTaskHandle = osThreadNew(StartmqttTask, NULL, &mqttTask_attributes);
+  mqttTaskHandle = osThreadNew(StartmqttTask, NULL, &mqttTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -515,7 +515,6 @@ void StartDefaultTask(void *argument)
   httpd_init();
   // initializing CGI  [= CGI #7 =]
   myCGIinit();
-
   mySSIinit();
   /* Infinite loop */
   for(;;)
@@ -574,10 +573,11 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+  HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin,GPIO_PIN_SET);
   while (1)
   {
 	  osDelay(100);
-	  HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin);
+	  //HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin);
   }
   /* USER CODE END Error_Handler_Debug */
 }
