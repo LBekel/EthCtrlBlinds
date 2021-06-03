@@ -31,7 +31,7 @@
 #include "lwip/tcpip.h"
 /* Within 'USER CODE' section, code will be kept by default at each generation */
 /* USER CODE BEGIN 0 */
-
+#include "md5.h"
 /* USER CODE END 0 */
 
 /* Private define ------------------------------------------------------------*/
@@ -39,7 +39,7 @@
 #define TIME_WAITING_FOR_INPUT ( portMAX_DELAY )
 /* USER CODE BEGIN OS_THREAD_STACK_SIZE_WITH_RTOS */
 /* Stack size of the interface thread */
-#define INTERFACE_THREAD_STACK_SIZE ( 350 )
+#define INTERFACE_THREAD_STACK_SIZE ( 1024 )
 /* USER CODE END OS_THREAD_STACK_SIZE_WITH_RTOS */
 /* Network interface name */
 #define IFNAME0 's'
@@ -80,7 +80,7 @@ osSemaphoreId s_xSemaphore = NULL;
 ETH_HandleTypeDef heth;
 
 /* USER CODE BEGIN 3 */
-
+void SetupMacAdress(uint8_t *MACAddr);
 /* USER CODE END 3 */
 
 /* Private functions ---------------------------------------------------------*/
@@ -228,7 +228,7 @@ static void low_level_init(struct netif *netif)
   heth.Init.MediaInterface = ETH_MEDIA_INTERFACE_RMII;
 
   /* USER CODE BEGIN MACADDRESS */
-
+  SetupMacAdress(&MACAddr[0]);
   /* USER CODE END MACADDRESS */
 
   hal_eth_init_status = HAL_ETH_Init(&heth);
@@ -283,6 +283,11 @@ static void low_level_init(struct netif *netif)
   HAL_ETH_Start(&heth);
 
 /* USER CODE BEGIN PHY_PRE_CONFIG */
+#if LWIP_IPV4 && LWIP_IGMP
+  // interface support IGMP now (multicast)
+	  netif->flags |= NETIF_FLAG_IGMP;
+
+#endif
 
 /* USER CODE END PHY_PRE_CONFIG */
 
@@ -765,6 +770,35 @@ __weak void ethernetif_notify_conn_changed(struct netif *netif)
 #endif /* LWIP_NETIF_LINK_CALLBACK */
 
 /* USER CODE BEGIN 9 */
+void ethernet_status_callback(struct netif *netif)
+{
+	printf("New IP Address: %s\r\n", ipaddr_ntoa(&netif->ip_addr));
+	printf("MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\r\n",netif->hwaddr[0],netif->hwaddr[1],netif->hwaddr[2],netif->hwaddr[3],netif->hwaddr[4],netif->hwaddr[5]);
+}
+
+/**
+ * sets up a MAC address as
+ *    non-broadcast
+ *    locally assigned
+ *    random address derived from first 6 bytes of md5 of stm32 unique id
+ */
+void SetupMacAdress(uint8_t *MACAddr)
+{
+  MD5_CTX md5;
+  uint8_t digest[16];
+  MD5_Init(&md5);
+  MD5_Update(&md5, (uint8_t*)UID_BASE, 12);//96 bits = 12 bytes
+  MD5_Final(digest, &md5);
+  MACAddr[0] = ((digest[0] & ~0x01) //clear bit 0 (broadcast bit)
+                       | 0x02); //set bit 1 (locally assigned address)
+  MACAddr[1] = digest[1];
+  MACAddr[2] = digest[2];
+  MACAddr[3] = digest[3];
+  MACAddr[4] = digest[4];
+  MACAddr[5] = digest[5];
+  //printf("MAC %04x:%04x:%04x:%04x:%04x:%04x\r\n",MACAddr[0],MACAddr[1],MACAddr[2],MACAddr[3],MACAddr[4],MACAddr[5]);
+}
+
 
 /* USER CODE END 9 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

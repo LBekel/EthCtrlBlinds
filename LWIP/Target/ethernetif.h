@@ -48,6 +48,7 @@ u32_t sys_jiffies(void);
 u32_t sys_now(void);
 
 /* USER CODE BEGIN 1 */
+void ethernet_status_callback(struct netif *netif);
 
 /* USER CODE END 1 */
 #endif

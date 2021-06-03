@@ -64,7 +64,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t mqttTaskHandle;
 const osThreadAttr_t mqttTask_attributes = {
   .name = "mqttTask",
-  .stack_size = 1024 * 4,
+  .stack_size = 4096 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
@@ -511,7 +511,7 @@ void StartDefaultTask(void *argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
-  printf("\r\n\n\n\n\n\nStartDefaultTask\r\n");
+  printf("StartDefaultTask\r\n");
   httpd_init();
   // initializing CGI  [= CGI #7 =]
   myCGIinit();

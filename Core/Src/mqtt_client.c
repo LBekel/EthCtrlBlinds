@@ -37,6 +37,7 @@ static mqtt_client_t* client;
 static ip_addr_t mqtt_server_ip_addr;
 static char *payload_ON = "ON";
 static char *payload_OFF = "OFF";
+static char mqttname[27];
 
 static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection_status_t status);
 static void mqtt_sub_request_cb(void *arg, err_t result);
@@ -57,8 +58,13 @@ void mqtt_connect(mqtt_client_t *client)
     memset(&ci, 0, sizeof(ci));
 
     /* Minimal amount of information required is client identifier, so set it here */
-    ci.client_id = "lwiptest";
+    //printf("MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\r\n",gnetif.hwaddr[0],gnetif.hwaddr[1],gnetif.hwaddr[2],gnetif.hwaddr[3],gnetif.hwaddr[4],gnetif.hwaddr[5]);
+    sprintf(mqttname, "ETHCTRLBLINDS_%02x%02x%02x%02x%02x%02x", gnetif.hwaddr[0],gnetif.hwaddr[1],gnetif.hwaddr[2],gnetif.hwaddr[3],gnetif.hwaddr[4],gnetif.hwaddr[5]);
+
+    ci.client_id = mqttname;
     ci.keep_alive = 60;
+
+    //printf("ClientID: %s\r\n",ci.client_id);
 
     /* Initiate client and connect to server, if this fails immediately an error code is returned
      otherwise mqtt_connection_cb will be called with connection result after attempting
@@ -225,8 +231,8 @@ void publish_relay_states(void) {
 	u8_t retain = 0;
 	if (mqtt_client_is_connected(client)) {
 		for (uint8_t var = 1; var < num_relay_ch + 1; ++var) {
-			char str[16];
-			sprintf(str, "relayStateCh%02d", var); //build Topic
+			char str[44];
+			sprintf(str, "%s/relayStateCh%02d", mqttname, var); //build Topic
 			//printf("%s\n", str);
 			if (RelayStates[var - 1] == true) {
 				err = mqtt_publish(client, str, payload_ON, strlen(payload_ON),
@@ -261,7 +267,7 @@ static void mqtt_pub_request_cb(void *arg, err_t result)
   */
 void StartmqttTask(void *argument)
 {
-	printf("\r\n\n\n\n\n\nStartmqttTask\r\n");
+	printf("StartmqttTask\r\n");
 	client = mqtt_client_new();
 	if(client == NULL){
 		printf("ERROR: New MQTT client space\r\n");
@@ -270,7 +276,7 @@ void StartmqttTask(void *argument)
 	/* Infinite loop */
 	for (;;)
 	{
-		if (&gnetif.ip_addr.addr != 0) //we need a IP Address to connect
+		if (gnetif.ip_addr.addr != 0) //we need a IP Address to connect
 		{
 
 			if (mqtt_client_is_connected(client)) /* while connected, publish */
@@ -282,7 +288,6 @@ void StartmqttTask(void *argument)
 			else
 			{
 				printf("MQTT Disconnect %d.\r\n", client->conn_state);
-				printf("IP Address: %s\r\n", ipaddr_ntoa(&gnetif.ip_addr));
 				mqtt_connect(client);
 				//force publish actual inputstats
 				//check_inputs(client, true);

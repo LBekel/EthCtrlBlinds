@@ -59,6 +59,7 @@ void Error_Handler(void);
 
 /* Private defines -----------------------------------------------------------*/
 #define MQTT_REQ_MAX_IN_FLIGHT 8
+#define LWIP_NUM_NETIF_CLIENT_DATA 1
 #define LED_YELLOW_Pin GPIO_PIN_2
 #define LED_YELLOW_GPIO_Port GPIOE
 #define LED_RED_Pin GPIO_PIN_3
