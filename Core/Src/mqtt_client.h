@@ -12,8 +12,8 @@
 
 #include <stdbool.h>
 
-#define num_relay_ch 8
-#define num_input_ch 10
+#define num_relay_ch 16
+#define num_input_ch 18
 
 bool RelayStates[num_relay_ch];
 bool InputStates[num_input_ch];

@@ -8,6 +8,7 @@
 		<h3>ETHERNET CONTROL BLINDS</h3>
 		<strong>Test<strong>
 		<form method="get" action="/relay.cgi">
+			<input value="Test" name="topic" type="text" checked><br>
 			<!--#tag1-->Relay1<br>
 			<!--#tag2-->Relay2<br>
 			<!--#tag3-->Relay3<br>
@@ -16,6 +17,14 @@
 			<!--#tag6-->Relay6<br>
 			<!--#tag7-->Relay7<br>
 			<!--#tag8-->Relay8<br>
+			<!--#tag9-->Relay9<br>
+			<!--#tag10-->Relay10<br>
+			<!--#tag11-->Relay11<br>
+			<!--#tag12-->Relay12<br>
+			<!--#tag13-->Relay13<br>
+			<!--#tag14-->Relay14<br>
+			<!--#tag15-->Relay15<br>
+			<!--#tag16-->Relay16<br>
 			<br>
 			<input value="Send" type="submit">
 		</form>

@@ -51,14 +51,32 @@
 #define LWIP_DHCP 1
 /*----- Default Value for LWIP_IGMP: 0 ---*/
 #define LWIP_IGMP 1
+/*----- Default Value for MEMP_NUM_UDP_PCB: 4 ---*/
+#define MEMP_NUM_UDP_PCB 5
+/*----- Default Value for MEMP_NUM_TCP_PCB: 5 ---*/
+#define MEMP_NUM_TCP_PCB 6
 /*----- Default Value for LWIP_TCPIP_CORE_LOCKING: 0 ---*/
 #define LWIP_TCPIP_CORE_LOCKING 1
 /*----- Value in opt.h for MEM_ALIGNMENT: 1 -----*/
 #define MEM_ALIGNMENT 4
 /*----- Default Value for MEM_SIZE: 1600 ---*/
-#define MEM_SIZE 3000
+#define MEM_SIZE 61440
+/*----- Default Value for MEMP_OVERFLOW_CHECK: 0 ---*/
+#define MEMP_OVERFLOW_CHECK 2
+/*----- Default Value for MEMP_SANITY_CHECK: 0 ---*/
+#define MEMP_SANITY_CHECK 1
+/*----- Default Value for MEM_OVERFLOW_CHECK: 0 ---*/
+#define MEM_OVERFLOW_CHECK 2
+/*----- Default Value for MEM_SANITY_CHECK: 0 ---*/
+#define MEM_SANITY_CHECK 1
+/*----- Default Value for LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT: 0 ---*/
+#define LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT 1
+/*----- Default Value for MEMP_NUM_PBUF: 16 ---*/
+#define MEMP_NUM_PBUF 64
 /*----- Default Value for MEMP_NUM_SYS_TIMEOUT: 7 ---*/
-#define MEMP_NUM_SYS_TIMEOUT 10
+#define MEMP_NUM_SYS_TIMEOUT 12
+/*----- Default Value for PBUF_POOL_SIZE: 16 ---*/
+#define PBUF_POOL_SIZE 64
 /*----- Value in opt.h for LWIP_ETHERNET: LWIP_ARP || PPPOE_SUPPORT -*/
 #define LWIP_ETHERNET 1
 /*----- Default Value for LWIP_AUTOIP: 0 ---*/
@@ -86,9 +104,9 @@
 /*----- Value in opt.h for LWIP_NETIF_LINK_CALLBACK: 0 -----*/
 #define LWIP_NETIF_LINK_CALLBACK 1
 /*----- Value in opt.h for TCPIP_THREAD_STACKSIZE: 0 -----*/
-#define TCPIP_THREAD_STACKSIZE 4096
+#define TCPIP_THREAD_STACKSIZE 2048
 /*----- Value in opt.h for TCPIP_THREAD_PRIO: 1 -----*/
-#define TCPIP_THREAD_PRIO 24
+#define TCPIP_THREAD_PRIO 49
 /*----- Value in opt.h for TCPIP_MBOX_SIZE: 0 -----*/
 #define TCPIP_MBOX_SIZE 6
 /*----- Value in opt.h for SLIPIF_THREAD_STACKSIZE: 0 -----*/
@@ -119,12 +137,6 @@
 #define LWIP_HTTPD_DYNAMIC_HEADERS 1
 /*----- Value in opt.h for HTTPD_USE_CUSTOM_FSDATA: 0 -----*/
 #define HTTPD_USE_CUSTOM_FSDATA 1
-/*----- Default Value for LWIP_MDNS: 0 ---*/
-#define LWIP_MDNS 1
-/*----- Default Value for LWIP_MDNS_RESPONDER: 0 ---*/
-#define LWIP_MDNS_RESPONDER 1
-/*----- Default Value for MDNS_MAX_SERVICES: 0 ---*/
-#define MDNS_MAX_SERVICES 1
 /*----- Value in opt.h for LWIP_STATS: 1 -----*/
 #define LWIP_STATS 0
 /*----- Value in opt.h for CHECKSUM_GEN_IP: 1 -----*/

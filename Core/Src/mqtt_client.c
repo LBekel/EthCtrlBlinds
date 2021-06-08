@@ -24,12 +24,15 @@
 //		Relay4_GPIO_Port, Relay5_GPIO_Port, Relay6_GPIO_Port, Relay7_GPIO_Port,
 //		Relay8_GPIO_Port };
 //
-//uint16_t Input_Pins[] = { Input_1_Pin, Input_2_Pin, Input_3_Pin, Input_4_Pin,
-//		Input_5_Pin, Input_6_Pin, Input_7_Pin, Input_8_Pin , Input_9_Pin , Input_10_Pin };
-//
-//GPIO_TypeDef * Input_Ports[] = { Input_1_GPIO_Port, Input_2_GPIO_Port, Input_3_GPIO_Port,
-//		Input_4_GPIO_Port, Input_5_GPIO_Port, Input_6_GPIO_Port, Input_7_GPIO_Port,
-//		Input_8_GPIO_Port, Input_9_GPIO_Port, Input_10_GPIO_Port};
+uint16_t Input_Pins[] = { IN01_Pin, IN02_Pin, IN03_Pin, IN04_Pin, IN05_Pin,
+		IN06_Pin, IN07_Pin, IN08_Pin, IN09_Pin, IN10_Pin, IN11_Pin, IN12_Pin,
+		IN13_Pin, IN14_Pin, IN15_Pin, IN16_Pin, IN17_Pin, IN18_Pin };
+
+GPIO_TypeDef *Input_Ports[] = { IN01_GPIO_Port, IN02_GPIO_Port, IN03_GPIO_Port,
+		IN04_GPIO_Port, IN05_GPIO_Port, IN06_GPIO_Port, IN07_GPIO_Port,
+		IN08_GPIO_Port, IN09_GPIO_Port, IN10_GPIO_Port, IN11_GPIO_Port,
+		IN12_GPIO_Port, IN13_GPIO_Port, IN14_GPIO_Port, IN15_GPIO_Port,
+		IN16_GPIO_Port,	IN17_GPIO_Port, IN18_GPIO_Port };
 
 bool RelayStates[num_relay_ch] = {false};
 bool InputStates[num_input_ch] = {false};
@@ -197,8 +200,8 @@ void check_inputs(mqtt_client_t *client, bool force)
 
     for(uint8_t var = 1; var < num_input_ch + 1; ++var)
     {
-        char str[16];
-        sprintf(str, "inputStateCh%02d", var); //build Topic
+        char str[sizeof(mqttname)+15];
+		sprintf(str, "%s/inputStateCh%02d", mqttname, var); //build Topic
         //printf("%s\n", str);
 
         if(HAL_GPIO_ReadPin(Input_Ports[var-1], Input_Pins[var-1])==GPIO_PIN_RESET)
@@ -231,7 +234,7 @@ void publish_relay_states(void) {
 	u8_t retain = 0;
 	if (mqtt_client_is_connected(client)) {
 		for (uint8_t var = 1; var < num_relay_ch + 1; ++var) {
-			char str[44];
+			char str[sizeof(mqttname)+15];
 			sprintf(str, "%s/relayStateCh%02d", mqttname, var); //build Topic
 			//printf("%s\n", str);
 			if (RelayStates[var - 1] == true) {
@@ -242,6 +245,7 @@ void publish_relay_states(void) {
 						strlen(payload_OFF), qos, retain, mqtt_pub_request_cb,
 						NULL);
 			}
+			osDelay(10);
 			if (err != ERR_OK)
 				printf("Publish err: %d\r\n", err);
 
@@ -272,7 +276,6 @@ void StartmqttTask(void *argument)
 	if(client == NULL){
 		printf("ERROR: New MQTT client space\r\n");
 	}
-	printf("Client %d.\r\n", client->conn_state);
 	/* Infinite loop */
 	for (;;)
 	{
@@ -294,6 +297,10 @@ void StartmqttTask(void *argument)
 
 				osDelay(1000);
 			}
+		}
+		else
+		{
+			osDelay(1000);
 		}
 	}
 }

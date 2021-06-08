@@ -64,7 +64,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t mqttTaskHandle;
 const osThreadAttr_t mqttTask_attributes = {
   .name = "mqttTask",
-  .stack_size = 4096 * 4,
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
@@ -100,7 +100,8 @@ u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen);
 
 // [* SSI #3 *]
 char const *theSSItags[num_relay_ch] = { "tag1", "tag2", "tag3", "tag4", "tag5",
-		"tag6", "tag7", "tag8" };
+		"tag6", "tag7", "tag8", "tag9", "tag10", "tag11", "tag12", "tag13", "tag14",
+		"tag15", "tag16"};
 
 /* USER CODE END PFP */
 
@@ -144,6 +145,10 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin ,GPIO_PIN_SET);
 			RelayStates[channel - 1] = true;
 		}
+		if (strcmp(pcParam[i], "topic") == 0)
+		{
+			printf("topic %s\r\n",pcValue[i]);
+		}
 	}
 	//publish_relay_states();
 	// the extension .shtml for SSI to work
@@ -161,7 +166,7 @@ void myCGIinit(void) {
 
 // the actual function for SSI [* SSI #4 *]
 u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen) {
-	if (iIndex < 8)
+	if (iIndex < num_relay_ch)
 	{
 		if (RelayStates[iIndex] == false) {
 			char myStr1[53];
@@ -463,6 +468,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_YELLOW_GPIO_Port, LED_YELLOW_Pin, GPIO_PIN_SET);
@@ -472,6 +478,17 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(DRB_USART1_DIR_GPIO_Port, DRB_USART1_DIR_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, OUT01DOWN_Pin|OUT01UP_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, OUT02DOWN_Pin|OUT02UP_Pin|OUT03DOWN_Pin|OUT03UP_Pin
+                          |OUT04DOWN_Pin|OUT04UP_Pin|OUT05DOWN_Pin|OUT05UP_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, OUT06DOWN_Pin|OUT06UP_Pin|OUT07DOWN_Pin|OUT07UP_Pin
+                          |OUT08DOWN_Pin|OUT08UP_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : LED_YELLOW_Pin LED_RED_Pin */
   GPIO_InitStruct.Pin = LED_YELLOW_Pin|LED_RED_Pin;
@@ -487,11 +504,58 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(DRB_USART1_DIR_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : IN01_Pin IN02_Pin IN03_Pin */
-  GPIO_InitStruct.Pin = IN01_Pin|IN02_Pin|IN03_Pin;
+  /*Configure GPIO pins : IN01_Pin IN02_Pin IN03_Pin IN04_Pin
+                           IN05_Pin IN06_Pin IN07_Pin IN08_Pin
+                           IN09_Pin */
+  GPIO_InitStruct.Pin = IN01_Pin|IN02_Pin|IN03_Pin|IN04_Pin
+                          |IN05_Pin|IN06_Pin|IN07_Pin|IN08_Pin
+                          |IN09_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : IN10_Pin */
+  GPIO_InitStruct.Pin = IN10_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(IN10_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : IN11_Pin IN12_Pin IN13_Pin IN14_Pin */
+  GPIO_InitStruct.Pin = IN11_Pin|IN12_Pin|IN13_Pin|IN14_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : IN15_Pin IN16_Pin IN17_Pin IN18_Pin */
+  GPIO_InitStruct.Pin = IN15_Pin|IN16_Pin|IN17_Pin|IN18_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : OUT01DOWN_Pin OUT01UP_Pin */
+  GPIO_InitStruct.Pin = OUT01DOWN_Pin|OUT01UP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : OUT02DOWN_Pin OUT02UP_Pin OUT03DOWN_Pin OUT03UP_Pin
+                           OUT04DOWN_Pin OUT04UP_Pin OUT05DOWN_Pin OUT05UP_Pin */
+  GPIO_InitStruct.Pin = OUT02DOWN_Pin|OUT02UP_Pin|OUT03DOWN_Pin|OUT03UP_Pin
+                          |OUT04DOWN_Pin|OUT04UP_Pin|OUT05DOWN_Pin|OUT05UP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : OUT06DOWN_Pin OUT06UP_Pin OUT07DOWN_Pin OUT07UP_Pin
+                           OUT08DOWN_Pin OUT08UP_Pin */
+  GPIO_InitStruct.Pin = OUT06DOWN_Pin|OUT06UP_Pin|OUT07DOWN_Pin|OUT07UP_Pin
+                          |OUT08DOWN_Pin|OUT08UP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 

@@ -202,7 +202,6 @@ void HAL_ETH_RxCpltCallback(ETH_HandleTypeDef *heth)
  */
 static void low_level_init(struct netif *netif)
 {
-  uint32_t regvalue = 0;
   HAL_StatusTypeDef hal_eth_init_status;
 /* USER CODE BEGIN OS_THREAD_ATTR_CMSIS_RTOS_V2 */
   osThreadAttr_t attributes;
@@ -215,7 +214,7 @@ static void low_level_init(struct netif *netif)
   heth.Init.AutoNegotiation = ETH_AUTONEGOTIATION_DISABLE;
   heth.Init.Speed = ETH_SPEED_100M;
   heth.Init.DuplexMode = ETH_MODE_FULLDUPLEX;
-  heth.Init.PhyAddress = LAN8742A_PHY_ADDRESS;
+  heth.Init.PhyAddress = KSZ8081_PHY_ADDRESS;
   MACAddr[0] = 0x00;
   MACAddr[1] = 0x80;
   MACAddr[2] = 0xE1;
@@ -290,16 +289,6 @@ static void low_level_init(struct netif *netif)
 #endif
 
 /* USER CODE END PHY_PRE_CONFIG */
-
-  /* Read Register Configuration */
-  HAL_ETH_ReadPHYRegister(&heth, PHY_ISFR, &regvalue);
-  regvalue |= (PHY_ISFR_INT4);
-
-  /* Enable Interrupt on change of link status */
-  HAL_ETH_WritePHYRegister(&heth, PHY_ISFR , regvalue );
-
-  /* Read Register Configuration */
-  HAL_ETH_ReadPHYRegister(&heth, PHY_ISFR , &regvalue);
 
 /* USER CODE BEGIN PHY_POST_CONFIG */
 
