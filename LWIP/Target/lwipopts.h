@@ -133,6 +133,8 @@
 #define LWIP_HTTPD_CGI 1
 /*----- Default Value for LWIP_HTTPD_SSI: 0 ---*/
 #define LWIP_HTTPD_SSI 1
+/*----- Default Value for LWIP_HTTPD_MAX_CGI_PARAMETERS: 16 ---*/
+#define LWIP_HTTPD_MAX_CGI_PARAMETERS 20
 /*----- Default Value for LWIP_HTTPD_DYNAMIC_HEADERS: 0 ---*/
 #define LWIP_HTTPD_DYNAMIC_HEADERS 1
 /*----- Value in opt.h for HTTPD_USE_CUSTOM_FSDATA: 0 -----*/

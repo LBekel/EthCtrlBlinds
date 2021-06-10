@@ -31,6 +31,7 @@
 #include "string.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include "web.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,6 +41,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+//#define FLASH_USER_START_ADDR   ADDR_FLASH_SECTOR_6   /* Start @ of user Flash area */
+//#define FLASH_USER_END_ADDR     (ADDR_FLASH_SECTOR_7-1)   /* End @ of user Flash area */
+//
+//#define DATA_32                 ((uint32_t)0x12345678)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -57,17 +62,23 @@ UART_HandleTypeDef huart1;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 1024 * 4,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for mqttTask */
 osThreadId_t mqttTaskHandle;
 const osThreadAttr_t mqttTask_attributes = {
   .name = "mqttTask",
-  .stack_size = 2048 * 4,
+  .stack_size = 4096 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
+//uint32_t FirstSector = 0, NbOfSectors = 0;
+//uint32_t Address = 0, SECTORError = 0;
+//__IO uint32_t data32 = 0 , MemoryProgramStatus = 0;
+//FLASH_OBProgramInitTypeDef    OBInit;
+/*Variable used for Erase procedure*/
+//static FLASH_EraseInitTypeDef EraseInitStruct;
 
 /* USER CODE END PV */
 
@@ -81,27 +92,7 @@ void StartDefaultTask(void *argument);
 void StartmqttTask(void *argument);
 
 /* USER CODE BEGIN PFP */
-int _write(int file, char *ptr, int len);
-// just declaring the function for the compiler [= CGI #2 =]
-const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
-char *pcValue[]);
-
-// in our HTML file <form method="get" action="/leds.cgi"> [= CGI #3 =]
-const tCGI RelayCGI = { "/relay.cgi", RelayCGIhandler };
-
-// [= CGI #4 =]
-tCGI theCGItable[1];
-
-// just declaring SSI handler function [* SSI #1 *]
-u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen);
-
-// [* SSI #2 *]
-#define numSSItags num_relay_ch
-
-// [* SSI #3 *]
-char const *theSSItags[num_relay_ch] = { "tag1", "tag2", "tag3", "tag4", "tag5",
-		"tag6", "tag7", "tag8", "tag9", "tag10", "tag11", "tag12", "tag13", "tag14",
-		"tag15", "tag16"};
+//static uint32_t GetSector(uint32_t Address);
 
 /* USER CODE END PFP */
 
@@ -115,78 +106,14 @@ int _write(int file, char *data, int len)
       return -1;
    }
 
-   // arbitrary timeout 1000
-   HAL_StatusTypeDef status = HAL_UART_Transmit(&huart8, (uint8_t*)data, len, 1000);
+   //HAL_StatusTypeDef status = HAL_UART_Transmit(&huart8, (uint8_t*)data, len, 1000);
 
-   // return # of bytes written - as best we can tell
-   return (status == HAL_OK ? len : 0);
-}
+   for(int i=0 ; i<len ; i++)
+   {
+	 ITM_SendChar((*data++));
+   }
 
-// the actual function for handling CGI [= CGI #5 =]
-const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
-		char *pcValue[]) {
-
-	uint32_t i = 0;
-
-	if (iIndex == 0) {
-		for (int var = 0; var < num_relay_ch; ++var) {
-			HAL_GPIO_WritePin(Relay_Ports[var], Relay_Pins[var], GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin ,GPIO_PIN_RESET);
-			RelayStates[var] = false;
-		}
-	}
-
-	for (i = 0; i < iNumParams; i++) {
-		if (strcmp(pcParam[i], "relay") == 0)
-		{
-			uint8_t channel;
-			sscanf(pcValue[i], "%"PRIu8"", &channel);
-			HAL_GPIO_WritePin(Relay_Ports[channel - 1], Relay_Pins[channel - 1], GPIO_PIN_SET);
-			HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin ,GPIO_PIN_SET);
-			RelayStates[channel - 1] = true;
-		}
-		if (strcmp(pcParam[i], "topic") == 0)
-		{
-			printf("topic %s\r\n",pcValue[i]);
-		}
-	}
-	//publish_relay_states();
-	// the extension .shtml for SSI to work
-	return "/index.shtml";
-
-} // END [= CGI #5 =]
-
-// function to initialize CGI [= CGI #6 =]
-void myCGIinit(void) {
-	//add LED control CGI to the table
-	theCGItable[0] = RelayCGI;
-	//give the table to the HTTP server
-	http_set_cgi_handlers(theCGItable, 1);
-} // END [= CGI #6 =]
-
-// the actual function for SSI [* SSI #4 *]
-u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen) {
-	if (iIndex < num_relay_ch)
-	{
-		if (RelayStates[iIndex] == false) {
-			char myStr1[53];
-			sprintf(myStr1,	"<input value=\"%d\" name=\"relay\" type=\"checkbox\">",iIndex + 1);
-			strcpy(pcInsert, myStr1);
-			return strlen(myStr1);
-		} else if (RelayStates[iIndex] == true) {
-			char myStr2[61];
-			sprintf(myStr2,	"<input value=\"%d\" name=\"relay\" type=\"checkbox\" checked>", iIndex + 1);
-			strcpy(pcInsert, myStr2);
-			return strlen(myStr2);
-		}
-	}
-	return 0;
-}
-
-// function to initialize SSI [* SSI #5 *]
-void mySSIinit(void) {
-
-	http_set_ssi_handler(mySSIHandler, (char const**) theSSItags,numSSItags);
+   return 0;
 }
 
 /* USER CODE END 0 */
@@ -223,6 +150,64 @@ int main(void)
   MX_UART8_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  /* Unlock the Flash to enable the flash control register access *************/
+//  HAL_FLASH_Unlock();
+//  /* Allow Access to option bytes sector */
+//  HAL_FLASH_OB_Unlock();
+//  /* Get the Dual bank configuration status */
+//  HAL_FLASHEx_OBGetConfig(&OBInit);
+
+  /* Erase the user Flash area
+    (area defined by FLASH_USER_START_ADDR and FLASH_USER_END_ADDR) ***********/
+
+  /* Get the 1st sector to erase */
+//  FirstSector = GetSector(FLASH_USER_START_ADDR);
+//  /* Get the number of sector to erase from 1st sector*/
+//  NbOfSectors = GetSector(FLASH_USER_END_ADDR) - FirstSector + 1;
+//  /* Fill EraseInit structure*/
+//  EraseInitStruct.TypeErase     = FLASH_TYPEERASE_SECTORS;
+//  EraseInitStruct.VoltageRange  = FLASH_VOLTAGE_RANGE_3;
+//  EraseInitStruct.Sector        = FirstSector;
+//  EraseInitStruct.NbSectors     = NbOfSectors;
+
+  /* Note: If an erase operation in Flash memory also concerns data in the data or instruction cache,
+     you have to make sure that these data are rewritten before they are accessed during code
+     execution. If this cannot be done safely, it is recommended to flush the caches by setting the
+     DCRST and ICRST bits in the FLASH_CR register. */
+//  if (HAL_FLASHEx_Erase(&EraseInitStruct, &SECTORError) != HAL_OK)
+//  {
+//    /*
+//      Error occurred while sector erase.
+//      User can add here some code to deal with this error.
+//      SECTORError will contain the faulty sector and then to know the code error on this sector,
+//      user can call function 'HAL_FLASH_GetError()'
+//    */
+//
+//	  printf("ERROR: HAL_FLASHEx_Erase\r\n");
+//  }
+
+  /* Program the user Flash area word by word
+    (area defined by FLASH_USER_START_ADDR and FLASH_USER_END_ADDR) ***********/
+
+//  Address = FLASH_USER_START_ADDR;
+//
+//  while (Address < FLASH_USER_END_ADDR)
+//  {
+//    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, Address, DATA_32) == HAL_OK)
+//    {
+//      Address = Address + 4;
+//    }
+//   else
+//    {
+//      /* Error occurred while writing data in Flash memory.
+//         User can add here some code to deal with this error */
+//	   printf("ERROR: HAL_FLASH_Program\r\n");
+//    }
+//  }
+
+  /* Lock the Flash to disable the flash control register access (recommended
+     to protect the FLASH memory against possible unwanted operation) *********/
+ // HAL_FLASH_Lock();
 
   /* USER CODE END 2 */
 
@@ -561,6 +546,51 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+/**
+  * @brief  Gets the sector of a given address
+  * @param  None
+  * @retval The sector of a given address
+  */
+//static uint32_t GetSector(uint32_t Address)
+//{
+//  uint32_t sector = 0;
+//
+//  if((Address < ADDR_FLASH_SECTOR_1) && (Address >= ADDR_FLASH_SECTOR_0))
+//  {
+//    sector = FLASH_SECTOR_0;
+//  }
+//  else if((Address < ADDR_FLASH_SECTOR_2) && (Address >= ADDR_FLASH_SECTOR_1))
+//  {
+//    sector = FLASH_SECTOR_1;
+//  }
+//  else if((Address < ADDR_FLASH_SECTOR_3) && (Address >= ADDR_FLASH_SECTOR_2))
+//  {
+//    sector = FLASH_SECTOR_2;
+//  }
+//  else if((Address < ADDR_FLASH_SECTOR_4) && (Address >= ADDR_FLASH_SECTOR_3))
+//  {
+//    sector = FLASH_SECTOR_3;
+//  }
+//  else if((Address < ADDR_FLASH_SECTOR_5) && (Address >= ADDR_FLASH_SECTOR_4))
+//  {
+//    sector = FLASH_SECTOR_4;
+//  }
+//  else if((Address < ADDR_FLASH_SECTOR_6) && (Address >= ADDR_FLASH_SECTOR_5))
+//  {
+//    sector = FLASH_SECTOR_5;
+//  }
+//  else if((Address < ADDR_FLASH_SECTOR_7) && (Address >= ADDR_FLASH_SECTOR_6))
+//  {
+//    sector = FLASH_SECTOR_6;
+//  }
+//  else
+//  {
+//    sector = FLASH_SECTOR_7;
+//  }
+//
+//  return sector;
+//}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -583,8 +613,29 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(500);
+    osDelay(1000);
     HAL_GPIO_TogglePin(LED_YELLOW_GPIO_Port, LED_YELLOW_Pin);
+//    HAL_GPIO_TogglePin(OUT01DOWN_GPIO_Port, OUT01DOWN_Pin);
+//    osDelay(1000);
+//    HAL_GPIO_TogglePin(OUT01UP_GPIO_Port, OUT01UP_Pin);
+//    HAL_GPIO_TogglePin(OUT02DOWN_GPIO_Port, OUT02DOWN_Pin);
+//    HAL_GPIO_TogglePin(OUT02UP_GPIO_Port, OUT02UP_Pin);
+//    HAL_GPIO_TogglePin(OUT03DOWN_GPIO_Port, OUT03DOWN_Pin);
+//    HAL_GPIO_TogglePin(OUT03UP_GPIO_Port, OUT03UP_Pin);
+//    HAL_GPIO_TogglePin(OUT04DOWN_GPIO_Port, OUT04DOWN_Pin);
+//    HAL_GPIO_TogglePin(OUT04UP_GPIO_Port, OUT04UP_Pin);
+//    HAL_GPIO_TogglePin(OUT05DOWN_GPIO_Port, OUT05DOWN_Pin);
+//    HAL_GPIO_TogglePin(OUT05UP_GPIO_Port, OUT05UP_Pin);
+//    HAL_GPIO_TogglePin(OUT06DOWN_GPIO_Port, OUT06DOWN_Pin);
+//    HAL_GPIO_TogglePin(OUT06UP_GPIO_Port, OUT06UP_Pin);
+//    HAL_GPIO_TogglePin(OUT07DOWN_GPIO_Port, OUT07DOWN_Pin);
+//    HAL_GPIO_TogglePin(OUT07UP_GPIO_Port, OUT07UP_Pin);
+//    HAL_GPIO_TogglePin(OUT08DOWN_GPIO_Port, OUT08DOWN_Pin);
+//    HAL_GPIO_TogglePin(OUT08UP_GPIO_Port, OUT08UP_Pin);
+//    HAL_GPIO_TogglePin(OUT07DOWN_GPIO_Port, OUT07DOWN_Pin);
+//    HAL_GPIO_TogglePin(OUT07UP_GPIO_Port, OUT07UP_Pin);
+//    HAL_GPIO_TogglePin(OUT08DOWN_GPIO_Port, OUT08DOWN_Pin);
+//    HAL_GPIO_TogglePin(OUT08UP_GPIO_Port, OUT08UP_Pin);
   }
   /* USER CODE END 5 */
 }

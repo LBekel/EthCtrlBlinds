@@ -99,7 +99,7 @@ void MX_LWIP_Init(void)
   memset(&attributes, 0x0, sizeof(osThreadAttr_t));
   attributes.name = "LinkThr";
   attributes.stack_size = INTERFACE_THREAD_STACK_SIZE;
-  attributes.priority = osPriorityBelowNormal;
+  attributes.priority = osPriorityNormal7;
   osThreadNew(ethernetif_set_link, &link_arg, &attributes);
 /* USER CODE END OS_THREAD_NEW_CMSIS_RTOS_V2 */
 
