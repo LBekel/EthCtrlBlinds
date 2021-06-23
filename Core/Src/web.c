@@ -11,6 +11,7 @@
 #include "string.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include "dio.h"
 
 const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
@@ -22,17 +23,20 @@ bool RelayStatesTemp[num_relay_ch];
 const tCGI RelayCGI = { "/relay.cgi", RelayCGIhandler };
 // in our HTML file <form method="get" action="/mqtt.cgi">
 const tCGI MqttCGI = { "/mqtt.cgi", MqttCGIhandler };
+struct ee_storage_s topic;
 
-tCGI theCGItable[2];
+#define theCGItableSize 2
+
+tCGI theCGItable[theCGItableSize];
 
 
 // [* SSI #2 *]
-#define numSSItags 17
+#define numSSItags 18
 
 // [* SSI #3 *]
 char const *theSSItags[numSSItags] = { "tag1", "tag2", "tag3", "tag4", "tag5",
 		"tag6", "tag7", "tag8", "tag9", "tag10", "tag11", "tag12", "tag13", "tag14",
-		"tag15", "tag16", "topic"};
+		"tag15", "tag16", "mqtttopic", "mqtthost"};
 
 // function to initialize CGI
 void myCGIinit(void)
@@ -41,7 +45,7 @@ void myCGIinit(void)
 	theCGItable[0] = RelayCGI;
 	theCGItable[1] = MqttCGI;
 	//give the table to the HTTP server
-	http_set_cgi_handlers(theCGItable, sizeof(theCGItable));
+	http_set_cgi_handlers(theCGItable, theCGItableSize);
 }
 
 // function to initialize SSI
@@ -69,10 +73,6 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 			channel--;
 			RelayStatesTemp[channel] = true;
 		}
-		if (strcmp(pcParam[var], "topic") == 0)
-		{
-			printf("topic %s\r\n",pcValue[var]);
-		}
 	}
 
 	for (uint8_t var = 0; var < num_relay_ch; ++var)
@@ -90,12 +90,20 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 		char *pcValue[]) {
 
-	uint32_t i = 0;
+	uint32_t var = 0;
 
-	for (i = 0; i < iNumParams; i++) {
-		if (strcmp(pcParam[i], "topic") == 0)
+	for (var = 0; var < iNumParams; var++) {
+		if (strcmp(pcParam[var], "mqtttopic") == 0)
 		{
-			printf("topic %s\r\n",pcValue[i]);
+			printf("topic %s\r\n",pcValue[var]);
+			sprintf((char*)topic.pData, pcValue[var]);
+			EE_WriteStorage(&topic);
+			setMQTTTopic(*pcValue);
+			printf("topic %s\r\n",(char*)topic.pData);
+		}
+		if (strcmp(pcParam[var], "mqtthost") == 0)
+		{
+
 		}
 	}
 	return "/index.shtml";
@@ -118,10 +126,21 @@ u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen) {
 			return strlen(myStr);
 		}
 	}
-	if(iIndex == 16) //tag "topic"
+	if(iIndex == 16) //tag "mqtttopic"
 	{
-		char myStr[] ="<input value=\"Test\" name=\"topic\" type=\"text\" id=\"topic\">";
-		//sprintf(myStr,	"<input value=\"Test\" name=\"topic\" type=\"text\" id=\"topic\">");
+		char myStr[100];// ="<input value=\"Test\" name=\"topic\" type=\"text\" id=\"topic\">";
+		char tempTopic[27];
+		getMQTTTopic(tempTopic);
+		printf("TempTopic: %s\r\n",tempTopic);
+		sprintf(myStr,	"<input value=\"%s\" name=\"mqtttopic\" type=\"text\" id=\"mqtttopic\" size=\"50\">", tempTopic);
+		strcpy(pcInsert, myStr);
+		return strlen(myStr);
+	}
+	if(iIndex == 17) //tag "mqtthost"
+	{
+		char myStr[94];
+		char tempHost[27] = "\0";
+		sprintf(myStr,	"<input value=\"%s\" name=\"mqtthost\" type=\"text\" id=\"mqtthost\" size=\"50\">", tempHost);
 		strcpy(pcInsert, myStr);
 		return strlen(myStr);
 	}

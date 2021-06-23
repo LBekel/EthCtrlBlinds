@@ -41,10 +41,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-//#define FLASH_USER_START_ADDR   ADDR_FLASH_SECTOR_6   /* Start @ of user Flash area */
-//#define FLASH_USER_END_ADDR     (ADDR_FLASH_SECTOR_7-1)   /* End @ of user Flash area */
-//
-//#define DATA_32                 ((uint32_t)0x12345678)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -69,17 +66,16 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t mqttTaskHandle;
 const osThreadAttr_t mqttTask_attributes = {
   .name = "mqttTask",
-  .stack_size = 4096 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
-//uint32_t FirstSector = 0, NbOfSectors = 0;
-//uint32_t Address = 0, SECTORError = 0;
-//__IO uint32_t data32 = 0 , MemoryProgramStatus = 0;
-//FLASH_OBProgramInitTypeDef    OBInit;
-/*Variable used for Erase procedure*/
-//static FLASH_EraseInitTypeDef EraseInitStruct;
-
+uint16_t VirtAddVarTab[NB_OF_VAR];
+static char name[NB_OF_VAR*2];
+extern struct ee_storage_s topic = {
+		.VirtAddrStartNb = 1,
+		.VirtWordCount = NB_OF_VAR,
+		.pData = (uint16_t*)name};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -92,7 +88,6 @@ void StartDefaultTask(void *argument);
 void StartmqttTask(void *argument);
 
 /* USER CODE BEGIN PFP */
-//static uint32_t GetSector(uint32_t Address);
 
 /* USER CODE END PFP */
 
@@ -125,7 +120,11 @@ int _write(int file, char *data, int len)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	/* Enable I-Cache */
+	SCB_EnableICache();
 
+	/* Enable D-Cache */
+	SCB_EnableDCache();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -150,64 +149,26 @@ int main(void)
   MX_UART8_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  /* Unlock the Flash to enable the flash control register access *************/
-//  HAL_FLASH_Unlock();
-//  /* Allow Access to option bytes sector */
-//  HAL_FLASH_OB_Unlock();
-//  /* Get the Dual bank configuration status */
-//  HAL_FLASHEx_OBGetConfig(&OBInit);
+  /* Unlock the Flash Program Erase controller */
+  if( HAL_FLASH_Unlock() != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* EEPROM Init */
+  if( EE_Init() != EE_OK)
+  {
+    Error_Handler();
+  }
+  sprintf(name, "Test1234");
 
-  /* Erase the user Flash area
-    (area defined by FLASH_USER_START_ADDR and FLASH_USER_END_ADDR) ***********/
+  EE_ReadStorage(&topic);
 
-  /* Get the 1st sector to erase */
-//  FirstSector = GetSector(FLASH_USER_START_ADDR);
-//  /* Get the number of sector to erase from 1st sector*/
-//  NbOfSectors = GetSector(FLASH_USER_END_ADDR) - FirstSector + 1;
-//  /* Fill EraseInit structure*/
-//  EraseInitStruct.TypeErase     = FLASH_TYPEERASE_SECTORS;
-//  EraseInitStruct.VoltageRange  = FLASH_VOLTAGE_RANGE_3;
-//  EraseInitStruct.Sector        = FirstSector;
-//  EraseInitStruct.NbSectors     = NbOfSectors;
+  printf("Read: %s\r\n",name);
 
-  /* Note: If an erase operation in Flash memory also concerns data in the data or instruction cache,
-     you have to make sure that these data are rewritten before they are accessed during code
-     execution. If this cannot be done safely, it is recommended to flush the caches by setting the
-     DCRST and ICRST bits in the FLASH_CR register. */
-//  if (HAL_FLASHEx_Erase(&EraseInitStruct, &SECTORError) != HAL_OK)
-//  {
-//    /*
-//      Error occurred while sector erase.
-//      User can add here some code to deal with this error.
-//      SECTORError will contain the faulty sector and then to know the code error on this sector,
-//      user can call function 'HAL_FLASH_GetError()'
-//    */
-//
-//	  printf("ERROR: HAL_FLASHEx_Erase\r\n");
-//  }
-
-  /* Program the user Flash area word by word
-    (area defined by FLASH_USER_START_ADDR and FLASH_USER_END_ADDR) ***********/
-
-//  Address = FLASH_USER_START_ADDR;
-//
-//  while (Address < FLASH_USER_END_ADDR)
-//  {
-//    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, Address, DATA_32) == HAL_OK)
-//    {
-//      Address = Address + 4;
-//    }
-//   else
-//    {
-//      /* Error occurred while writing data in Flash memory.
-//         User can add here some code to deal with this error */
-//	   printf("ERROR: HAL_FLASH_Program\r\n");
-//    }
-//  }
-
-  /* Lock the Flash to disable the flash control register access (recommended
-     to protect the FLASH memory against possible unwanted operation) *********/
- // HAL_FLASH_Lock();
+  if( HAL_FLASH_Lock() != HAL_OK)
+  {
+    Error_Handler();
+  }
 
   /* USER CODE END 2 */
 
@@ -545,51 +506,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-/**
-  * @brief  Gets the sector of a given address
-  * @param  None
-  * @retval The sector of a given address
-  */
-//static uint32_t GetSector(uint32_t Address)
-//{
-//  uint32_t sector = 0;
-//
-//  if((Address < ADDR_FLASH_SECTOR_1) && (Address >= ADDR_FLASH_SECTOR_0))
-//  {
-//    sector = FLASH_SECTOR_0;
-//  }
-//  else if((Address < ADDR_FLASH_SECTOR_2) && (Address >= ADDR_FLASH_SECTOR_1))
-//  {
-//    sector = FLASH_SECTOR_1;
-//  }
-//  else if((Address < ADDR_FLASH_SECTOR_3) && (Address >= ADDR_FLASH_SECTOR_2))
-//  {
-//    sector = FLASH_SECTOR_2;
-//  }
-//  else if((Address < ADDR_FLASH_SECTOR_4) && (Address >= ADDR_FLASH_SECTOR_3))
-//  {
-//    sector = FLASH_SECTOR_3;
-//  }
-//  else if((Address < ADDR_FLASH_SECTOR_5) && (Address >= ADDR_FLASH_SECTOR_4))
-//  {
-//    sector = FLASH_SECTOR_4;
-//  }
-//  else if((Address < ADDR_FLASH_SECTOR_6) && (Address >= ADDR_FLASH_SECTOR_5))
-//  {
-//    sector = FLASH_SECTOR_5;
-//  }
-//  else if((Address < ADDR_FLASH_SECTOR_7) && (Address >= ADDR_FLASH_SECTOR_6))
-//  {
-//    sector = FLASH_SECTOR_6;
-//  }
-//  else
-//  {
-//    sector = FLASH_SECTOR_7;
-//  }
-//
-//  return sector;
-//}
 
 /* USER CODE END 4 */
 

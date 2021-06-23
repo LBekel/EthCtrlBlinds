@@ -7,8 +7,10 @@
 	<body>
 		<h3>ETHERNET CONTROL BLINDS</h3>
 		<form method="get" action="/mqtt.cgi">
-			<label for="topic">Topic:</label>
-			<!--#topic-->
+			<label for="mqtttopic">MQTT Topic:</label>
+			<!--#mqtttopic-->
+			<br><label for="mqtthost">MQTT Host:</label>
+			<!--#mqtthost-->
 			<br><input value="Send" type="submit">
 		</form>
 		<form method="get" action="/relay.cgi">
