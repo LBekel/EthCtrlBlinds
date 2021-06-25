@@ -50,6 +50,7 @@ void initBlinds()
 {
 	for (int var = 0; var < 8; ++var)
 	{
+		blinds[var].channel = var+1;
 		blinds[var].downRelay_Pin = Relay_Pins[var*2];
 		blinds[var].downRelay_Port = Relay_Ports[var*2];
 		blinds[var].upRelay_Pin = Relay_Pins[var*2+1];

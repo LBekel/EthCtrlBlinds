@@ -97,7 +97,7 @@
 #define PAGE_FULL             ((uint8_t)0x80)
 
 /* Variables' number */
-#define NB_OF_VAR             ((uint8_t)0x0A)
+#define NB_OF_VAR             ((uint8_t)0x0E)
 
 /* Exported types ------------------------------------------------------------*/
 struct ee_storage_s{

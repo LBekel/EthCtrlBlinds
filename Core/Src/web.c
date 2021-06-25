@@ -23,25 +23,23 @@ bool RelayStatesTemp[num_relay_ch];
 const tCGI RelayCGI = { "/relay.cgi", RelayCGIhandler };
 // in our HTML file <form method="get" action="/mqtt.cgi">
 const tCGI MqttCGI = { "/mqtt.cgi", MqttCGIhandler };
-struct ee_storage_s topic;
+struct ee_storage_s eemqtttopic;
+extern struct ee_storage_s eemqtthost;
 
 #define theCGItableSize 2
-
 tCGI theCGItable[theCGItableSize];
 
+#define SSITAGS C(tag1)C(tag2)C(tag3)C(tag4)C(tag5)C(tag6)C(tag7)C(tag8)C(tag9)C(tag10)C(tag11)C(tag12)C(tag13)C(tag14)C(tag15)C(tag16)C(mqtttopic)C(mqtthost)C(blind1)
+#define C(x) x,
+enum eSSItags { SSITAGS numSSItags };
+#undef C
 
-// [* SSI #2 *]
-#define numSSItags 18
-
-// [* SSI #3 *]
-char const *theSSItags[numSSItags] = { "tag1", "tag2", "tag3", "tag4", "tag5",
-		"tag6", "tag7", "tag8", "tag9", "tag10", "tag11", "tag12", "tag13", "tag14",
-		"tag15", "tag16", "mqtttopic", "mqtthost"};
+#define C(x) #x,
+const char * const theSSItags[] = { SSITAGS };
 
 // function to initialize CGI
 void myCGIinit(void)
 {
-	//add LED control CGI to the table
 	theCGItable[0] = RelayCGI;
 	theCGItable[1] = MqttCGI;
 	//give the table to the HTTP server
@@ -60,28 +58,40 @@ void mySSIinit(void)
 const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 		char *pcValue[])
 {
-	for (uint8_t var = 0; var < sizeof(RelayStatesTemp); var++)
-	{
-		RelayStatesTemp[var] = false;
-	}
 	for (uint8_t var = 0; var < iNumParams; var++)
 	{
-		if (strcmp(pcParam[var], "relay") == 0)
+		if (strncmp(pcParam[var], "blind",5) == 0)
 		{
-			uint8_t channel = 0;
-			sscanf(pcValue[var], "%"PRIu8"", &channel);
-			channel--;
-			RelayStatesTemp[channel] = true;
+			//uint8_t channel = 0;
+			//sscanf(pcValue[var], "%"PRIu8"", &channel);
+			//channel--;
+			if (strcmp(pcValue[var], "off") == 0)
+			{
+				blinds[var].blinddirection = blindsdirection_off;
+				RelayStates[var*2] = false;
+				RelayStates[var*2+1] = false;
+			}
+			else if (strcmp(pcValue[var], "up") == 0)
+			{
+				blinds[var].blinddirection = blindsdirection_up;
+				RelayStates[var*2] = false;
+				RelayStates[var*2+1] = true;
+			}
+			else if (strcmp(pcValue[var], "down") == 0)
+			{
+				blinds[var].blinddirection = blindsdirection_down;
+				RelayStates[var*2] = true;
+				RelayStates[var*2+1] = true;
+			}
 		}
 	}
 
-	for (uint8_t var = 0; var < num_relay_ch; ++var)
+	for (uint8_t var = 0; var < iNumParams; ++var)
 	{
-		HAL_GPIO_WritePin(Relay_Ports[var], Relay_Pins[var], RelayStatesTemp[var]);
-		RelayStates[var] = RelayStatesTemp[var];
+		setBlindsDirection(&blinds[var]);
+		publish_blind_state(&blinds[var]);
 	}
-	//publish_relay_states();
-	// the extension .shtml for SSI to work
+
 	return "/index.shtml";
 
 }
@@ -90,57 +100,74 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 		char *pcValue[]) {
 
-	uint32_t var = 0;
-
-	for (var = 0; var < iNumParams; var++) {
-		if (strcmp(pcParam[var], "mqtttopic") == 0)
+	for (uint8_t var = 0; var < iNumParams; var++) {
+		if (strcmp(pcParam[var], theSSItags[mqtttopic]) == 0)
 		{
-			printf("topic %s\r\n",pcValue[var]);
-			sprintf((char*)topic.pData, pcValue[var]);
-			EE_WriteStorage(&topic);
-			setMQTTTopic(*pcValue);
-			printf("topic %s\r\n",(char*)topic.pData);
+			sprintf((char*)eemqtttopic.pData, pcValue[var]);
+			EE_WriteStorage(&eemqtttopic);
+			setMQTTTopic((char*)pcValue[var]);
 		}
-		if (strcmp(pcParam[var], "mqtthost") == 0)
+		if (strcmp(pcParam[var], theSSItags[mqtthost]) == 0)
 		{
-
+			ip_addr_t mqtt_host_addr;
+			ipaddr_aton((char*)pcValue[var],&mqtt_host_addr);
+			//printf("New Host IP Address: %s\r\n", ipaddr_ntoa(&mqtt_host_addr));
+			memcpy(eemqtthost.pData,&mqtt_host_addr,4);
+			EE_WriteStorage(&eemqtthost);
+			setMQTTHost(&mqtt_host_addr);
 		}
 	}
 	return "/index.shtml";
-
 }
 
 // the actual function for SSI
 u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen) {
-	if (iIndex < num_relay_ch) //tag 1-16
+	if (iIndex < 8)
 	{
-		if (RelayStates[iIndex] == false) {
-			char myStr[64];
-			sprintf(myStr,	"<input value=\"%d\" name=\"relay\" type=\"checkbox\">",iIndex + 1);
+		if (blinds[iIndex].blinddirection == blindsdirection_off) {
+			char myStr[300];
+			sprintf(myStr,"<select name=\"blind%d\" id=\"blind%d\">\
+			  <option value=\"up\">up</option>\
+			  <option value=\"down\">down</option>\
+			  <option selected value=\"off\">off</option>\
+			</select>",iIndex + 1,iIndex + 1);
 			strcpy(pcInsert, myStr);
 			return strlen(myStr);
-		} else if (RelayStates[iIndex] == true) {
-			char myStr[64];
-			sprintf(myStr,	"<input value=\"%d\" name=\"relay\" type=\"checkbox\" checked>", iIndex + 1);
+		} else if (blinds[iIndex].blinddirection == blindsdirection_up) {
+			char myStr[300];
+			sprintf(myStr,"<select name=\"blind%d\" id=\"blind%d\">\
+			  <option selected value=\"up\">up</option>\
+			  <option value=\"down\">down</option>\
+			  <option value=\"off\">off</option>\
+			</select>",iIndex + 1,iIndex + 1);
+			strcpy(pcInsert, myStr);
+			return strlen(myStr);
+		} else if (blinds[iIndex].blinddirection == blindsdirection_down) {
+			char myStr[300];
+			sprintf(myStr,"<select name=\"blind%d\" id=\"blind%d\">\
+			  <option value=\"up\">up</option>\
+			  <option selected value=\"down\">down</option>\
+			  <option value=\"off\">off</option>\
+			</select>",iIndex + 1,iIndex + 1);
 			strcpy(pcInsert, myStr);
 			return strlen(myStr);
 		}
 	}
-	if(iIndex == 16) //tag "mqtttopic"
+	if(iIndex == mqtttopic)
 	{
-		char myStr[100];// ="<input value=\"Test\" name=\"topic\" type=\"text\" id=\"topic\">";
+		char myStr[100];
 		char tempTopic[27];
 		getMQTTTopic(tempTopic);
-		printf("TempTopic: %s\r\n",tempTopic);
 		sprintf(myStr,	"<input value=\"%s\" name=\"mqtttopic\" type=\"text\" id=\"mqtttopic\" size=\"50\">", tempTopic);
 		strcpy(pcInsert, myStr);
 		return strlen(myStr);
 	}
-	if(iIndex == 17) //tag "mqtthost"
+	if(iIndex == mqtthost)
 	{
-		char myStr[94];
-		char tempHost[27] = "\0";
-		sprintf(myStr,	"<input value=\"%s\" name=\"mqtthost\" type=\"text\" id=\"mqtthost\" size=\"50\">", tempHost);
+		char myStr[100];
+		ip_addr_t mqtt_host_addr;
+		getMQTTHost(&mqtt_host_addr);
+		sprintf(myStr,	"<input value=\"%s\" name=\"mqtthost\" type=\"text\" id=\"mqtthost\" size=\"50\">", ipaddr_ntoa(&mqtt_host_addr));
 		strcpy(pcInsert, myStr);
 		return strlen(myStr);
 	}

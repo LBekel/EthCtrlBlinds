@@ -49,6 +49,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "eeprom.h"
+#include <stdio.h>
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -756,11 +757,16 @@ uint16_t EE_ReadStorage(struct ee_storage_s * storage)
 	return 0;
 }
 uint16_t EE_WriteStorage(struct ee_storage_s * storage)
-{
-	for (int var = 0; var < storage->VirtWordCount; ++var)
-	{
-		uint16_t VarValue = *((storage->pData)+var);
-		EE_WriteVariable(storage->VirtAddrStartNb+var,  VarValue);
+ {
+	if (HAL_FLASH_Unlock() != HAL_OK) {
+		printf("HAL_FLASH_Unlock failed\r\n");
+	}
+	for (int var = 0; var < storage->VirtWordCount; ++var) {
+		uint16_t VarValue = *((storage->pData) + var);
+		EE_WriteVariable(storage->VirtAddrStartNb + var, VarValue);
+	}
+	if (HAL_FLASH_Lock() != HAL_OK) {
+		printf("HAL_FLASH_lock failed\r\n");
 	}
 	return 0;
 }

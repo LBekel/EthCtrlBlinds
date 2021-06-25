@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "web.h"
+#include "dio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,15 +68,20 @@ osThreadId_t mqttTaskHandle;
 const osThreadAttr_t mqttTask_attributes = {
   .name = "mqttTask",
   .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityNormal3,
 };
 /* USER CODE BEGIN PV */
 uint16_t VirtAddVarTab[NB_OF_VAR];
-static char name[NB_OF_VAR*2];
-extern struct ee_storage_s topic = {
+static char name[20];
+struct ee_storage_s eemqtttopic = {
 		.VirtAddrStartNb = 1,
-		.VirtWordCount = NB_OF_VAR,
+		.VirtWordCount = 10,
 		.pData = (uint16_t*)name};
+static ip_addr_t hostip;
+struct ee_storage_s eemqtthost = {
+		.VirtAddrStartNb = 11,
+		.VirtWordCount = 2,
+		.pData = (uint16_t*)&hostip};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -120,11 +126,11 @@ int _write(int file, char *data, int len)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	/* Enable I-Cache */
-	SCB_EnableICache();
+  /* Enable I-Cache */
+  SCB_EnableICache();
 
-	/* Enable D-Cache */
-	SCB_EnableDCache();
+  /* Enable D-Cache */
+  SCB_EnableDCache();
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -149,6 +155,7 @@ int main(void)
   MX_UART8_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  initBlinds();
   /* Unlock the Flash Program Erase controller */
   if( HAL_FLASH_Unlock() != HAL_OK)
   {
@@ -159,16 +166,15 @@ int main(void)
   {
     Error_Handler();
   }
-  sprintf(name, "Test1234");
-
-  EE_ReadStorage(&topic);
-
-  printf("Read: %s\r\n",name);
-
+  //sprintf(name, "Test1234");
   if( HAL_FLASH_Lock() != HAL_OK)
   {
     Error_Handler();
   }
+  EE_ReadStorage(&eemqtttopic);
+  setMQTTTopic((char*)eemqtttopic.pData);
+  EE_ReadStorage(&eemqtthost);
+  setMQTTHost((ip_addr_t*)eemqtthost.pData);
 
   /* USER CODE END 2 */
 

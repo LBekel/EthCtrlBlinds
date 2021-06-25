@@ -13,24 +13,24 @@
 			<!--#mqtthost-->
 			<br><input value="Send" type="submit">
 		</form>
+		
 		<form method="get" action="/relay.cgi">
-			<!--#tag1-->Relay1<br>
-			<!--#tag2-->Relay2<br>
-			<!--#tag3-->Relay3<br>
-			<!--#tag4-->Relay4<br>
-			<!--#tag5-->Relay5<br>
-			<!--#tag6-->Relay6<br>
-			<!--#tag7-->Relay7<br>
-			<!--#tag8-->Relay8<br>
-			<!--#tag9-->Relay9<br>
-			<!--#tag10-->Relay10<br>
-			<!--#tag11-->Relay11<br>
-			<!--#tag12-->Relay12<br>
-			<!--#tag13-->Relay13<br>
-			<!--#tag14-->Relay14<br>
-			<!--#tag15-->Relay15<br>
-			<!--#tag16-->Relay16<br>
-			<br>
+			<label for="blind1">blind1:</label>
+			<!--#tag1--><br>
+			<label for="blind2">blind2:</label>
+			<!--#tag2--><br>
+			<label for="blind3">blind3:</label>
+			<!--#tag3--><br>
+			<label for="blind4">blind4:</label>
+			<!--#tag4--><br>
+			<label for="blind5">blind5:</label>
+			<!--#tag5--><br>
+			<label for="blind6">blind6:</label>
+			<!--#tag6--><br>
+			<label for="blind7">blind7:</label>
+			<!--#tag7--><br>
+			<label for="blind8">blind8:</label>
+			<!--#tag8--><br>
 			<input value="Send" type="submit">
 		</form>
 	</body>

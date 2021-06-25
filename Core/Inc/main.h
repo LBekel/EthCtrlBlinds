@@ -37,6 +37,8 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+extern struct ee_storage_s eemqtttopic;
+extern struct ee_storage_s eemqtthost;
 
 /* USER CODE END ET */
 
@@ -58,7 +60,7 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define MQTT_REQ_MAX_IN_FLIGHT 20
+#define MQTT_REQ_MAX_IN_FLIGHT 70
 #define LWIP_NUM_NETIF_CLIENT_DATA 1
 #define LED_YELLOW_Pin GPIO_PIN_2
 #define LED_YELLOW_GPIO_Port GPIOE

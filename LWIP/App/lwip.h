@@ -41,7 +41,6 @@
 
 /* USER CODE BEGIN 0 */
  struct netif gnetif;
- struct netif* get_netif(void);
 /* USER CODE END 0 */
 
 /* Global Variables ----------------------------------------------------------*/

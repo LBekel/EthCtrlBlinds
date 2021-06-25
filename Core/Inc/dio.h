@@ -17,6 +17,7 @@ typedef enum {
 }blinddirection_t;
 
 struct blind_s{
+	uint8_t channel;
 	uint16_t downRelay_Pin;
 	GPIO_TypeDef * downRelay_Port;
 	uint16_t upRelay_Pin;
@@ -36,6 +37,7 @@ GPIO_TypeDef * Relay_Ports[num_relay_ch];
 uint16_t Input_Pins[num_input_ch];
 GPIO_TypeDef * Input_Ports[num_input_ch];
 
+void initBlinds(void);
 void setBlindsDirection(struct blind_s *blind);
 
 #endif /* INC_DIO_H_ */
