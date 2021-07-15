@@ -68,20 +68,20 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 			if (strcmp(pcValue[var], "off") == 0)
 			{
 				blinds[var].blinddirection = blindsdirection_off;
-				RelayStates[var*2] = false;
-				RelayStates[var*2+1] = false;
+				//RelayStates[var*2] = false;
+				//RelayStates[var*2+1] = false;
 			}
 			else if (strcmp(pcValue[var], "up") == 0)
 			{
 				blinds[var].blinddirection = blindsdirection_up;
-				RelayStates[var*2] = false;
-				RelayStates[var*2+1] = true;
+				//RelayStates[var*2] = false;
+				//RelayStates[var*2+1] = true;
 			}
 			else if (strcmp(pcValue[var], "down") == 0)
 			{
 				blinds[var].blinddirection = blindsdirection_down;
-				RelayStates[var*2] = true;
-				RelayStates[var*2+1] = true;
+				//RelayStates[var*2] = true;
+				//RelayStates[var*2+1] = true;
 			}
 		}
 	}

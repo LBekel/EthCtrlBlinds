@@ -39,7 +39,6 @@ extern "C" {
 /* USER CODE BEGIN ET */
 extern struct ee_storage_s eemqtttopic;
 extern struct ee_storage_s eemqtthost;
-
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

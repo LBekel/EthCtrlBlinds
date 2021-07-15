@@ -7,6 +7,7 @@
 
 #include "main.h"
 #include "dio.h"
+#include "mqtt_client.h"
 #include <stdbool.h>
 
 uint16_t Relay_Pins[] = {
@@ -79,4 +80,92 @@ void setBlindsDirection(struct blind_s *blind)
 		default:
 			break;
 	}
+}
+
+void initDoubleswitches(void)
+{
+	for (uint8_t var = 0; var < num_doubleswitches; ++var)
+	{
+		doubleswitches[var].channel = var+1;
+		doubleswitches[var].downInput_Pin = Input_Pins[var*2];
+		doubleswitches[var].downInput_Port = Input_Ports[var*2];
+		doubleswitches[var].upInput_Pin = Input_Pins[var*2+1];
+		doubleswitches[var].upInput_Port = Input_Ports[var*2+1];;
+		doubleswitches[var].inputdirection = blindsdirection_off;
+		doubleswitches[var].changed = false;
+	}
+}
+
+void readDoubleswitches(void)
+{
+    for(uint8_t var = 0; var < num_doubleswitches; ++var)
+    {
+    	readDoubleswitch(&doubleswitches[var]);
+    }
+}
+
+void readDoubleswitch(struct doubleswitch_s *doubleswitch)
+{
+	if (HAL_GPIO_ReadPin(doubleswitch->downInput_Port, doubleswitch->downInput_Pin) == GPIO_PIN_SET)
+	{
+		if (doubleswitch->inputdirection != blindsdirection_up)
+		{
+			doubleswitch->changed = true;
+			doubleswitch->inputdirection = blindsdirection_up;
+		}
+	}
+	else if(HAL_GPIO_ReadPin(doubleswitch->upInput_Port, doubleswitch->upInput_Pin) == GPIO_PIN_SET)
+	{
+		if (doubleswitch->inputdirection != blindsdirection_down)
+		{
+			doubleswitch->changed = true;
+			doubleswitch->inputdirection = blindsdirection_down;
+		}
+	}
+	else
+	{
+		if (doubleswitch->inputdirection != blindsdirection_off)
+		{
+			doubleswitch->changed = true;
+			doubleswitch->inputdirection = blindsdirection_off;
+		}
+	}
+}
+void StartScanInputTask(void *argument)
+{
+  /* Infinite loop */
+  for(;;)
+  {
+	for (int var = 0; var < num_doubleswitches; ++var)
+	{
+		readDoubleswitch(&doubleswitches[var]);
+		if(doubleswitches[var].changed)
+		{
+			doubleswitches[var].changed = false;
+			//printf("Toggle\r\n");
+			publish_doubleswitch_state(&doubleswitches[var]);
+
+			//direct link
+			if (var < num_doubleswitches-1)
+			{
+				blinds[var].blinddirection = doubleswitches[var].inputdirection;
+				setBlindsDirection(&blinds[var]);
+				publish_blind_state(&blinds[var]);
+				publish_blind_cmd(&blinds[var]);
+			}
+			else
+			{
+				for (int var1 = 0; var1 < num_blinds; ++var1)
+				{
+					blinds[var1].blinddirection = doubleswitches[var].inputdirection;
+					setBlindsDirection(&blinds[var1]);
+					publish_blind_state(&blinds[var1]);
+					publish_blind_cmd(&blinds[var1]);
+				}
+			}
+		}
+	}
+
+    osDelay(10);
+  }
 }

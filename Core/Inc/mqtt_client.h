@@ -14,8 +14,8 @@
 #include "dio.h"
 
 void StartmqttTask(void *argument);
-void publish_relay_states(void);
-void publish_input_states(bool force);
+void publish_doubleswitch_states(void);
+void publish_doubleswitch_state(struct doubleswitch_s *doubleswitch);
 void publish_ip_mac(void);
 void publish_blind_state(struct blind_s *blind);
 void publish_blind_cmd(struct blind_s *blind);

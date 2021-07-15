@@ -70,6 +70,13 @@ const osThreadAttr_t mqttTask_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal3,
 };
+/* Definitions for scanInputTask */
+osThreadId_t scanInputTaskHandle;
+const osThreadAttr_t scanInputTask_attributes = {
+  .name = "scanInputTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal1,
+};
 /* USER CODE BEGIN PV */
 uint16_t VirtAddVarTab[NB_OF_VAR];
 static char name[20];
@@ -92,6 +99,7 @@ static void MX_UART8_Init(void);
 static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void *argument);
 void StartmqttTask(void *argument);
+void StartScanInputTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -156,6 +164,7 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   initBlinds();
+  initDoubleswitches();
   /* Unlock the Flash Program Erase controller */
   if( HAL_FLASH_Unlock() != HAL_OK)
   {
@@ -203,6 +212,9 @@ int main(void)
 
   /* creation of mqttTask */
   mqttTaskHandle = osThreadNew(StartmqttTask, NULL, &mqttTask_attributes);
+
+  /* creation of scanInputTask */
+  scanInputTaskHandle = osThreadNew(StartScanInputTask, NULL, &scanInputTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -578,6 +590,24 @@ __weak void StartmqttTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartmqttTask */
+}
+
+/* USER CODE BEGIN Header_StartScanInputTask */
+/**
+* @brief Function implementing the scanInputTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartScanInputTask */
+__weak void StartScanInputTask(void *argument)
+{
+  /* USER CODE BEGIN StartScanInputTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartScanInputTask */
 }
 
  /**
