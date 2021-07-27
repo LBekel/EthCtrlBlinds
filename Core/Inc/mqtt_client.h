@@ -13,6 +13,11 @@
 #include "lwip.h"
 #include "dio.h"
 
+typedef enum {
+	inpub_unknown,
+	inpub_blindcmnd
+}inpub_t;
+
 void StartmqttTask(void *argument);
 void publish_doubleswitch_states(void);
 void publish_doubleswitch_state(struct doubleswitch_s *doubleswitch);

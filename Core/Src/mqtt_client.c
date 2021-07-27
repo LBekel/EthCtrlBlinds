@@ -16,6 +16,13 @@
 #include "dio.h"
 #include <stdbool.h>
 
+#define BLINDCMND "cmnd/%s/blind"
+#define INPUTSTAT "stat/%s/input"
+#define BLINDSTAT "stat/%s/blind"
+#define LWTTELE "tele/%s/LWT"
+#define IPTELE "tele/%s/IP"
+#define MACTELE "tele/%s/MAC"
+
 
 static mqtt_client_t client;
 static ip_addr_t mqtt_server_ip_addr;
@@ -28,10 +35,12 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
 static void mqtt_sub_request_cb(void *arg, err_t result);
 static void mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len);
 static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t flags);
+static void mqtt_pub_request_cb(void *arg, err_t result);
 void publish_blind_cmds(void);
 void subscribe_blind_cmd(void);
 void publish_blind_states(void);
-static void mqtt_pub_request_cb(void *arg, err_t result);
+void publish_lwt(bool online);
+
 
 void mqtt_connect(mqtt_client_t *client)
 {
@@ -42,8 +51,16 @@ void mqtt_connect(mqtt_client_t *client)
     memset(&ci, 0, sizeof(ci));
 
     /* Minimal amount of information required is client identifier, so set it here */
+	char will_topic[strlen(mqttname) + 10];
+	sprintf(will_topic, LWTTELE, mqttname);
+	char will_msg[] = "Offline";
+
     ci.client_id = mqttname;
     ci.keep_alive = 60;
+    ci.will_msg = will_msg;
+    ci.will_topic = will_topic;
+    ci.will_qos = 0;
+	ci.will_retain = 1;
 
     /* Initiate client and connect to server, if this fails immediately an error code is returned
      otherwise mqtt_connection_cb will be called with connection result after attempting
@@ -67,15 +84,11 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
         /* Setup callback for incoming publish requests */
         mqtt_set_inpub_callback(client, mqtt_incoming_publish_cb, mqtt_incoming_data_cb, arg);
 
-        /* Subscribe to a topic named "subtopic" with QoS level 1, call mqtt_sub_request_cb with result */
-        //err = mqtt_subscribe(client, "switchCmdCh01", 0, mqtt_sub_request_cb, arg);
-
+        publish_lwt(true);
         publish_blind_cmds();
         subscribe_blind_cmd();
         publish_blind_states();
 		publish_doubleswitch_states();
-
-
     }
     else
     {
@@ -101,30 +114,20 @@ static void mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len
     //sync_printf("Incoming publish at topic %s with total length %u\n", topic, (unsigned int) tot_len);
     /* Decode topic string into a user defined reference */
 	char comparetopic[sizeof(mqttname)+14];
-	sprintf(comparetopic, "cmnd/%s/output", mqttname); //build Topic
+	sprintf(comparetopic, BLINDCMND, mqttname); //build Topic
 
-    if(strncmp(topic, "relayCommandCh", 14) == 0)
+    if(strncmp(topic, comparetopic, 14) == 0)
     {
-        inpub_id = 0;
-        sscanf(topic,"relayCommandCh%"PRIu8"",&channel);
-        printf("Channel %d ",channel);
-    }
-    else if(topic[0] == 'A')
-    {
-        /* All topics starting with 'A' might be handled at the same way */
-        inpub_id = 1;
-    }
-    else if(strncmp(topic, comparetopic, 14) == 0)
-    {
-        inpub_id = 3;
-        sscanf(topic,"%*[^0123456789]%"PRIu8"",&channel);
+        inpub_id = inpub_blindcmnd;
+        uint8_t n = strlen(comparetopic); //start sscanf after topic
+        sscanf(topic+n,"%"PRIu8"",&channel);
         printf("blindCmd received %d\n\r",channel);
         channel--;
     }
     else
     {
         /* For all other topics */
-        inpub_id = 4;
+        inpub_id = inpub_unknown;
     }
 }
 
@@ -138,44 +141,19 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
          See MQTT_VAR_HEADER_BUFFER_LEN)  */
 
         /* Call function or do action depending on reference, in this case inpub_id */
-        if(inpub_id == 0)
+        if(inpub_id == inpub_blindcmnd)
         {
-            if(strncmp((const char*)data, "ON", len) == 0)
-            {
-                printf("ON\n");
-                //HAL_GPIO_WritePin(Relay_Ports[channel-1], Relay_Pins[channel-1], GPIO_PIN_SET);
-                //RelayStates[channel-1] = true;
-
-            }
-            else if(strncmp((const char*)data, "OFF", len) == 0)
-            {
-                printf("OFF\n");
-                //HAL_GPIO_WritePin(Relay_Ports[channel-1], Relay_Pins[channel-1], GPIO_PIN_RESET);
-                //RelayStates[channel-1] = false;
-            }
-            else
-            {
-                //printf("mqtt_incoming_data_cb: %s\n", (const char *) data);
-            }
-            publish_doubleswitch_states();
-        }
-        else if(inpub_id == 1)
-        {
-            /* Call an 'A' function... */
-        }
-        else if(inpub_id == 3)
-        {
-			if (strncmp((const char*) data, "up", len) == 0)
+			if (strncmp((const char*) data, payload_up, len) == 0)
 			{
 				blinds[channel].blinddirection = blindsdirection_up;
 
 			}
-			else if (strncmp((const char*) data, "down", len) == 0)
+			else if (strncmp((const char*) data, payload_down, len) == 0)
 			{
 				blinds[channel].blinddirection = blindsdirection_down;
 
 			}
-			else if (strncmp((const char*) data, "off", len) == 0)
+			else if (strncmp((const char*) data, payload_off, len) == 0)
 			{
 				blinds[channel].blinddirection = blindsdirection_off;
 
@@ -191,6 +169,7 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
     else
     {
         /* Handle fragmented payload, store in buffer, write to file or whatever */
+    	printf("Fragmented\n\r");
     }
 }
 
@@ -214,7 +193,7 @@ void publish_doubleswitch_state(struct doubleswitch_s *doubleswitch)
 		u8_t retain = 0;
 
 		char str[sizeof(mqttname) + 14];
-		sprintf(str, "stat/%s/input%02d", mqttname, doubleswitch->channel); //build Topic
+		sprintf(str, INPUTSTAT"%02d", mqttname, doubleswitch->channel); //build Topic
 
 		switch(doubleswitch->inputdirection)
 		{
@@ -245,7 +224,7 @@ void subscribe_blind_cmd(void)
 	for (uint8_t var = 0; var < sizeof(blinds)/sizeof(blinds[0]); ++var)
 	{
 		char topic[sizeof(mqttname)+14];
-		sprintf(topic, "cmnd/%s/blind%02d", mqttname, blinds[var].channel); //build Topic
+		sprintf(topic, BLINDCMND"%02d", mqttname, blinds[var].channel); //build Topic
 		err = mqtt_subscribe(&client, topic, 1, mqtt_sub_request_cb, NULL);
 		if (err != ERR_OK)
 			printf("subscribe_blind_cmd err: %d\r\n", err);
@@ -273,7 +252,7 @@ void publish_blind_state(struct blind_s *blind) {
 	{
 
 		char topic[sizeof(mqttname) + 19];
-		sprintf(topic, "stat/%s/blind%02d", mqttname, blind->channel); //build Topic
+		sprintf(topic, BLINDSTAT"%02d", mqttname, blind->channel); //build Topic
 		char payload[5];
 		switch (blind->blinddirection)
 		{
@@ -316,8 +295,7 @@ void publish_blind_cmd(struct blind_s *blind) {
 	if (mqtt_client_is_connected(&client))
 	{
 		char topic[sizeof(mqttname) + 15];
-		sprintf(topic, "cmnd/%s/blind%02d", mqttname, blind->channel); //build Topic
-		char payload[5];
+		sprintf(topic, BLINDCMND"%02d", mqttname, blind->channel); //build Topic
 		switch (blind->blinddirection) {
 		case blindsdirection_up:
 			err = mqtt_publish(&client, topic, payload_up, strlen(payload_up),
@@ -347,14 +325,14 @@ void publish_ip_mac(void) {
 	if (mqtt_client_is_connected(&client))
 	{
 		char topic[strlen(mqttname) + 10];
-		sprintf(topic, "tele/%s/IP", mqttname);
+		sprintf(topic, IPTELE, mqttname);
 		char ip[16];
 		sprintf(ip, "%s", ipaddr_ntoa(&gnetif.ip_addr));
 		err = mqtt_publish(&client, topic, ip, strlen(ip), qos, retain, NULL, NULL);
 		if (err != ERR_OK)
 			printf("ERROR: publish_ip %d\r\n", err);
 
-		sprintf(topic, "tele/%s/MAC", mqttname);
+		sprintf(topic, MACTELE, mqttname);
 		char mac[13];
 		sprintf(mac, "%02x%02x%02x%02x%02x%02x", gnetif.hwaddr[0],gnetif.hwaddr[1],gnetif.hwaddr[2],gnetif.hwaddr[3],gnetif.hwaddr[4],gnetif.hwaddr[5]);
 
@@ -363,6 +341,32 @@ void publish_ip_mac(void) {
 		if (err != ERR_OK)
 			printf("ERROR: publish_mac %d\r\n", err);
 
+	}
+}
+void publish_lwt(bool online)
+{
+	if (mqtt_client_is_connected(&client))
+	{
+		err_t err = ERR_OK;
+		u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
+
+		char topic[sizeof(mqttname) + 10];
+		sprintf(topic, LWTTELE, mqttname); //build Topic
+
+		if(online)
+		{
+			char payload[] = "Online";
+			err = mqtt_publish(&client, topic, payload, strlen(payload),
+					qos, 1, mqtt_pub_request_cb, NULL);
+		}
+		else
+		{
+			char payload[] = "Offline";
+			err = mqtt_publish(&client, topic, payload, strlen(payload), qos, 1,
+					mqtt_pub_request_cb, NULL);
+		}
+		if (err != ERR_OK)
+			printf("ERROR: publish_lwt %d\n", err);
 	}
 }
 
@@ -397,7 +401,6 @@ void StartmqttTask(void *argument)
 			}
 			else
 			{
-				//printf("MQTT Disconnect %d.\r\n", client.conn_state);
 				mqtt_connect(&client);
 				osDelay(1000);
 			}
