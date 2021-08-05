@@ -67,28 +67,22 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 			//channel--;
 			if (strcmp(pcValue[var], "off") == 0)
 			{
-				blinds[var].blinddirection = blindsdirection_off;
-				//RelayStates[var*2] = false;
-				//RelayStates[var*2+1] = false;
+				blinds[var].blinddirection = blinddirection_off;
 			}
 			else if (strcmp(pcValue[var], "up") == 0)
 			{
-				blinds[var].blinddirection = blindsdirection_up;
-				//RelayStates[var*2] = false;
-				//RelayStates[var*2+1] = true;
+				blinds[var].blinddirection = blinddirection_up;
 			}
 			else if (strcmp(pcValue[var], "down") == 0)
 			{
-				blinds[var].blinddirection = blindsdirection_down;
-				//RelayStates[var*2] = true;
-				//RelayStates[var*2+1] = true;
+				blinds[var].blinddirection = blinddirection_down;
 			}
 		}
 	}
 
 	for (uint8_t var = 0; var < iNumParams; ++var)
 	{
-		setBlindsDirection(&blinds[var]);
+		setBlindDirection(&blinds[var]);
 		publish_blind_state(&blinds[var]);
 	}
 
@@ -124,7 +118,7 @@ const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen) {
 	if (iIndex < 8)
 	{
-		if (blinds[iIndex].blinddirection == blindsdirection_off) {
+		if (blinds[iIndex].blinddirection == blinddirection_off) {
 			char myStr[300];
 			sprintf(myStr,"<select name=\"blind%d\" id=\"blind%d\">\
 			  <option value=\"up\">up</option>\
@@ -133,7 +127,7 @@ u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen) {
 			</select>",iIndex + 1,iIndex + 1);
 			strcpy(pcInsert, myStr);
 			return strlen(myStr);
-		} else if (blinds[iIndex].blinddirection == blindsdirection_up) {
+		} else if (blinds[iIndex].blinddirection == blinddirection_up) {
 			char myStr[300];
 			sprintf(myStr,"<select name=\"blind%d\" id=\"blind%d\">\
 			  <option selected value=\"up\">up</option>\
@@ -142,7 +136,7 @@ u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen) {
 			</select>",iIndex + 1,iIndex + 1);
 			strcpy(pcInsert, myStr);
 			return strlen(myStr);
-		} else if (blinds[iIndex].blinddirection == blindsdirection_down) {
+		} else if (blinds[iIndex].blinddirection == blinddirection_down) {
 			char myStr[300];
 			sprintf(myStr,"<select name=\"blind%d\" id=\"blind%d\">\
 			  <option value=\"up\">up</option>\

@@ -23,6 +23,7 @@ void publish_doubleswitch_states(void);
 void publish_doubleswitch_state(struct doubleswitch_s *doubleswitch);
 void publish_ip_mac(void);
 void publish_blind_state(struct blind_s *blind);
+void publish_blind_position(struct blind_s *blind);
 void publish_blind_cmd(struct blind_s *blind);
 void getMQTTTopic(char * topic);
 void setMQTTTopic(char * topic);

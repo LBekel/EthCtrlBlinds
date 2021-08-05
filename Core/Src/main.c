@@ -78,7 +78,7 @@ const osThreadAttr_t scanInputTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal1,
 };
 /* USER CODE BEGIN PV */
-uint16_t VirtAddVarTab[NB_OF_VAR];
+
 static char name[20];
 struct ee_storage_s eemqtttopic = {
 		.VirtAddrStartNb = 1,
@@ -89,6 +89,13 @@ struct ee_storage_s eemqtthost = {
 		.VirtAddrStartNb = 11,
 		.VirtWordCount = 2,
 		.pData = (uint16_t*)&hostip};
+static uint16_t blindmovingtime[] = {10000,9000,8000,7000,6000,5000,4000,3000};
+struct ee_storage_s eeblindmovingtime = {
+		.VirtAddrStartNb = 13,
+		.VirtWordCount = 8,
+		.pData = (uint16_t*)&blindmovingtime};
+
+uint16_t VirtAddVarTab[20];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -115,7 +122,7 @@ int _write(int file, char *data, int len)
       return -1;
    }
 
-   //HAL_StatusTypeDef status = HAL_UART_Transmit(&huart8, (uint8_t*)data, len, 1000);
+   HAL_UART_Transmit(&huart8, (uint8_t*)data, len, 1000);
 
    for(int i=0 ; i<len ; i++)
    {
@@ -163,6 +170,7 @@ int main(void)
   MX_UART8_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+
   initBlinds();
   initDoubleswitches();
   /* Unlock the Flash Program Erase controller */
@@ -175,7 +183,6 @@ int main(void)
   {
     Error_Handler();
   }
-  //sprintf(name, "Test1234");
   if( HAL_FLASH_Lock() != HAL_OK)
   {
     Error_Handler();
@@ -184,6 +191,12 @@ int main(void)
   setMQTTTopic((char*)eemqtttopic.pData);
   EE_ReadStorage(&eemqtthost);
   setMQTTHost((ip_addr_t*)eemqtthost.pData);
+
+	//memcpy(eeblindmovingtime.pData,&blindmovingtime,8);
+	//EE_WriteStorage(&eemqtthost);
+
+  EE_ReadStorage(&eeblindmovingtime);
+  setBlindsMovingTime((uint16_t*)eeblindmovingtime.pData);
 
   /* USER CODE END 2 */
 
@@ -214,7 +227,7 @@ int main(void)
   mqttTaskHandle = osThreadNew(StartmqttTask, NULL, &mqttTask_attributes);
 
   /* creation of scanInputTask */
-  scanInputTaskHandle = osThreadNew(StartScanInputTask, NULL, &scanInputTask_attributes);
+  scanInputTaskHandle = osThreadNew(StartScanInputTask, (void*) &hadc1, &scanInputTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -320,14 +333,14 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
@@ -549,27 +562,6 @@ void StartDefaultTask(void *argument)
   {
     osDelay(1000);
     HAL_GPIO_TogglePin(LED_YELLOW_GPIO_Port, LED_YELLOW_Pin);
-//    HAL_GPIO_TogglePin(OUT01DOWN_GPIO_Port, OUT01DOWN_Pin);
-//    osDelay(1000);
-//    HAL_GPIO_TogglePin(OUT01UP_GPIO_Port, OUT01UP_Pin);
-//    HAL_GPIO_TogglePin(OUT02DOWN_GPIO_Port, OUT02DOWN_Pin);
-//    HAL_GPIO_TogglePin(OUT02UP_GPIO_Port, OUT02UP_Pin);
-//    HAL_GPIO_TogglePin(OUT03DOWN_GPIO_Port, OUT03DOWN_Pin);
-//    HAL_GPIO_TogglePin(OUT03UP_GPIO_Port, OUT03UP_Pin);
-//    HAL_GPIO_TogglePin(OUT04DOWN_GPIO_Port, OUT04DOWN_Pin);
-//    HAL_GPIO_TogglePin(OUT04UP_GPIO_Port, OUT04UP_Pin);
-//    HAL_GPIO_TogglePin(OUT05DOWN_GPIO_Port, OUT05DOWN_Pin);
-//    HAL_GPIO_TogglePin(OUT05UP_GPIO_Port, OUT05UP_Pin);
-//    HAL_GPIO_TogglePin(OUT06DOWN_GPIO_Port, OUT06DOWN_Pin);
-//    HAL_GPIO_TogglePin(OUT06UP_GPIO_Port, OUT06UP_Pin);
-//    HAL_GPIO_TogglePin(OUT07DOWN_GPIO_Port, OUT07DOWN_Pin);
-//    HAL_GPIO_TogglePin(OUT07UP_GPIO_Port, OUT07UP_Pin);
-//    HAL_GPIO_TogglePin(OUT08DOWN_GPIO_Port, OUT08DOWN_Pin);
-//    HAL_GPIO_TogglePin(OUT08UP_GPIO_Port, OUT08UP_Pin);
-//    HAL_GPIO_TogglePin(OUT07DOWN_GPIO_Port, OUT07DOWN_Pin);
-//    HAL_GPIO_TogglePin(OUT07UP_GPIO_Port, OUT07UP_Pin);
-//    HAL_GPIO_TogglePin(OUT08DOWN_GPIO_Port, OUT08DOWN_Pin);
-//    HAL_GPIO_TogglePin(OUT08UP_GPIO_Port, OUT08UP_Pin);
   }
   /* USER CODE END 5 */
 }

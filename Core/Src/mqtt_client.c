@@ -14,10 +14,12 @@
 #include <stdio.h>
 #include "dio.h"
 #include <stdbool.h>
+#include <math.h>
 
 #define BLINDCMND "cmnd/%s/blind"
 #define INPUTSTAT "stat/%s/input"
 #define BLINDSTAT "stat/%s/blind"
+#define BLINDPOS "stat/%s/blindpos"
 #define LWTTELE "tele/%s/LWT"
 #define IPTELE "tele/%s/IP"
 #define MACTELE "tele/%s/MAC"
@@ -40,6 +42,7 @@ static void mqtt_pub_request_cb(void *arg, err_t result);
 void publish_blind_cmds(void);
 void subscribe_blind_cmd(void);
 void publish_blind_states(void);
+void publish_blind_positions(void);
 void publish_lwt(bool online);
 
 void mqtt_connect(mqtt_client_t *client)
@@ -87,6 +90,7 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
         publish_blind_cmds();
         subscribe_blind_cmd();
         publish_blind_states();
+        publish_blind_positions();
 		publish_doubleswitch_states();
     }
     else
@@ -139,20 +143,19 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
         {
 			if (strncmp((const char*) data, payload_up, len) == 0)
 			{
-				blinds[channel].blinddirection = blindsdirection_up;
-
+				blinds[channel].blinddirection = blinddirection_up;
 			}
 			else if (strncmp((const char*) data, payload_down, len) == 0)
 			{
-				blinds[channel].blinddirection = blindsdirection_down;
+				blinds[channel].blinddirection = blinddirection_down;
 
 			}
 			else if (strncmp((const char*) data, payload_off, len) == 0)
 			{
-				blinds[channel].blinddirection = blindsdirection_off;
+				blinds[channel].blinddirection = blinddirection_off;
 
 			}
-			setBlindsDirection(&blinds[channel]);
+			setBlindDirection(&blinds[channel]);
 			publish_blind_state(&blinds[channel]);
         }
         else
@@ -189,15 +192,15 @@ void publish_doubleswitch_state(struct doubleswitch_s *doubleswitch)
 
 		switch(doubleswitch->inputdirection)
 		{
-			case blindsdirection_off:
+			case inputdirection_off:
 				err = mqtt_publish(&client, str, payload_off, strlen(payload_off), qos,
 				retain, mqtt_pub_request_cb, NULL);
 				break;
-			case blindsdirection_up:
+			case inputdirection_up:
 				err = mqtt_publish(&client, str, payload_up, strlen(payload_up), qos,
 				retain, mqtt_pub_request_cb, NULL);
 				break;
-			case blindsdirection_down:
+			case inputdirection_down:
 				err = mqtt_publish(&client, str, payload_down, strlen(payload_down), qos,
 				retain, mqtt_pub_request_cb, NULL);
 				break;
@@ -228,19 +231,17 @@ void publish_blind_state(struct blind_s *blind) {
 
 		char topic[sizeof(mqttname) + 19];
 		sprintf(topic, BLINDSTAT"%02d", mqttname, blind->channel); //build Topic
-		char payload[5];
 		switch (blind->blinddirection)
 		{
-			case blindsdirection_up:
-				sprintf(payload, "up");
+			case blinddirection_up:
 				err = mqtt_publish(&client, topic, payload_up, strlen(payload_up),
 									qos, retain, mqtt_pub_request_cb, NULL);
 				break;
-			case blindsdirection_down:
+			case blinddirection_down:
 				err = mqtt_publish(&client, topic, payload_down, strlen(payload_down),
 									qos, retain, mqtt_pub_request_cb, NULL);
 				break;
-			case blindsdirection_off:
+			case blinddirection_off:
 				err = mqtt_publish(&client, topic, payload_off, strlen(payload_off),
 									qos, retain, mqtt_pub_request_cb, NULL);
 				break;
@@ -248,9 +249,44 @@ void publish_blind_state(struct blind_s *blind) {
 				break;
 		}
 		if (err != ERR_OK)
-			printf("publish_blind_state err: %d\r\n", err);
+			printf("ERROR: publish_blind_state: %d\r\n", err);
 	}
 }
+void publish_blind_positions(void)
+{
+	if (mqtt_client_is_connected(&client))
+	{
+		for(uint8_t var = 0; var < num_blinds; ++var)
+		{
+			publish_blind_position(&blinds[var]);
+		}
+    }
+}
+void publish_blind_position(struct blind_s *blind) {
+	err_t err = ERR_OK;
+	u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
+	u8_t retain = 0;
+	if (mqtt_client_is_connected(&client))
+	{
+		if(blind->position_changed)
+		{
+			char topic[sizeof(mqttname) + 19];
+			sprintf(topic, BLINDPOS"%02d", mqttname, blind->channel); //build Topic
+			char payload[6];
+			double percent = round((double)100.0/blind->movingtime	* blind->position_actual);
+			//uint8_t percent;
+			//percent = percent1);
+			sprintf(payload, "%d", (uint8_t)percent);
+			err = mqtt_publish(&client, topic, payload, strlen(payload), qos,
+					retain, mqtt_pub_request_cb, NULL);
+
+			if (err != ERR_OK)
+				printf("ERROR: publish_blind_position: %d\r\n", err);
+		}
+		blind->position_changed = false;
+	}
+}
+
 void publish_blind_cmds(void)
 {
 	if (mqtt_client_is_connected(&client))
@@ -270,15 +306,15 @@ void publish_blind_cmd(struct blind_s *blind) {
 		char topic[sizeof(mqttname) + 15];
 		sprintf(topic, BLINDCMND"%02d", mqttname, blind->channel); //build Topic
 		switch (blind->blinddirection) {
-		case blindsdirection_up:
+		case blinddirection_up:
 			err = mqtt_publish(&client, topic, payload_up, strlen(payload_up),
 								qos, retain, mqtt_pub_request_cb, NULL);
 			break;
-		case blindsdirection_down:
+		case blinddirection_down:
 			err = mqtt_publish(&client, topic, payload_down, strlen(payload_down),
 								qos, retain, mqtt_pub_request_cb, NULL);
 			break;
-		case blindsdirection_off:
+		case blinddirection_off:
 			err = mqtt_publish(&client, topic, payload_off, strlen(payload_off),
 								qos, retain, mqtt_pub_request_cb, NULL);
 			break;
@@ -286,7 +322,7 @@ void publish_blind_cmd(struct blind_s *blind) {
 			break;
 		}
 		if (err != ERR_OK)
-			printf("publish_blind_cmd err: %d\r\n", err);
+			printf("ERROR: publish_blind_cmd: %d\r\n", err);
 
 	}
 }
@@ -350,7 +386,7 @@ void subscribe_blind_cmd(void)
 		sprintf(topic, BLINDCMND"%02d", mqttname, blinds[var].channel); //build Topic
 		err = mqtt_subscribe(&client, topic, 1, mqtt_sub_request_cb, NULL);
 		if (err != ERR_OK)
-			printf("subscribe_blind_cmd err: %d\r\n", err);
+			printf("ERROR: subscribe_blind_cmd: %d\r\n", err);
 		osDelay(10);
 	}
 }
@@ -359,7 +395,7 @@ static void mqtt_pub_request_cb(void *arg, err_t result)
 {
     if(result != ERR_OK)
     {
-        printf("Publish result: %d\r\n", result);
+        printf("ERROR: Publish result: %d\r\n", result);
     }
 }
 void StartmqttTask(void *argument)
@@ -373,7 +409,7 @@ void StartmqttTask(void *argument)
 
 			if (mqtt_client_is_connected(&client)) /* while connected, publish */
 			{
-				//publish_input_states(false);
+				publish_blind_positions();
 				osDelay(1000);
 			}
 			else
