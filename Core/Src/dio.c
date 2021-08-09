@@ -48,10 +48,15 @@ bool RelayStates[num_relay_ch] = {false};
 bool InputStates[num_input_ch] = {false};
 
 /* Variables for ADC conversion data */
-__IO   uint16_t   uhADCxConvertedData = VAR_CONVERTED_DATA_INIT_VALUE; /* ADC group regular conversion data */
+uint32_t   uhADCxConvertedData = VAR_CONVERTED_DATA_INIT_VALUE; /* ADC group regular conversion data */
 /* Variables for ADC conversion data computation to physical values */
 uint16_t   uhADCxConvertedData_Voltage_mVolt = 0;  /* Value of voltage calculated from ADC conversion data (unit: mV) */
+int16_t   uhADCxConvertedData_Current_mA = 0;
+/* Definition of ADCx conversions data table size */
+#define ADC_CONVERTED_DATA_BUFFER_SIZE   ((uint32_t)  512)   /* Size of array aADCxConvertedData[] */
 
+/* Variable containing ADC conversions data */
+ALIGN_32BYTES (static uint16_t   aADCxConvertedData[ADC_CONVERTED_DATA_BUFFER_SIZE]);
 
 void checkBlindPosition(uint8_t channel);
 void transferDoubleswitch2Blind(uint8_t channel);
@@ -85,16 +90,36 @@ void setBlindDirection(struct blind_s *blind)
 {
 	switch (blind->blinddirection) {
 		case blinddirection_up:
-			HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
 			blind->position_target = blind->movingtime; //to the end
-			blind->starttime = xTaskGetTickCount();
+			if (blind->position_actual	< blind->position_target) //check if we are not on the top position
+			{
+				HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
+				blind->starttime = xTaskGetTickCount();
+			}
+			else
+			{
+				blind->blinddirection = blinddirection_off;
+				HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_RESET);
+				blind->starttime = 0;
+			}
 			break;
 		case blinddirection_down:
-			HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
 			blind->position_target = 0; //to the end
-			blind->starttime = xTaskGetTickCount();
+			if (blind->position_actual	> blind->position_target) //check if we are not on the buttom position
+			{
+				HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
+				blind->starttime = xTaskGetTickCount();
+			}
+			else
+			{
+				blind->blinddirection = blinddirection_off;
+				HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_RESET);
+				blind->starttime = 0;
+			}
 			break;
 		case blinddirection_off:
 			HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
@@ -198,8 +223,10 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch)
 }
 void StartScanInputTask(void *argument) {
 	/* Infinite loop */
-	/* Start ADC group regular conversion */
-	if (HAL_ADC_Start((ADC_HandleTypeDef*) argument) != HAL_OK) {
+
+	if (HAL_ADC_Start_DMA((ADC_HandleTypeDef*)argument,(uint32_t *)aADCxConvertedData,
+            ADC_CONVERTED_DATA_BUFFER_SIZE) != HAL_OK)
+	{
 		/* ADC conversion start error */
 		Error_Handler();
 	}
@@ -213,21 +240,20 @@ void StartScanInputTask(void *argument) {
 			publishCentralDoubleswitchTopic();
 		}
 		osDelay(10);
-		/* Wait till conversion is done */
-		if (HAL_ADC_PollForConversion((ADC_HandleTypeDef*)argument, 10) != HAL_OK)
+        //HAL_ADC_PollForConversion((ADC_HandleTypeDef*)argument, 1);
+		/* Retrieve ADC conversion data */
+		//uhADCxConvertedData = HAL_ADC_GetValue((ADC_HandleTypeDef*)argument);
+		uint32_t avg = 0;
+		for (int var = 0; var < ADC_CONVERTED_DATA_BUFFER_SIZE; ++var)
 		{
-		  /* End Of Conversion flag not set on time */
-		  Error_Handler();
+			avg+=aADCxConvertedData[var];
 		}
-		else
-		{
-		  /* Retrieve ADC conversion data */
-		  uhADCxConvertedData = HAL_ADC_GetValue((ADC_HandleTypeDef*)argument);
-
-		  /* Computation of ADC conversions raw data to physical values           */
-		  /* using helper macro.                                                  */
-		  uhADCxConvertedData_Voltage_mVolt = __ADC_CALC_DATA_VOLTAGE(VDDA_APPLI, uhADCxConvertedData)/1;
-		}
+		avg /= ADC_CONVERTED_DATA_BUFFER_SIZE;
+		/* Computation of ADC conversions raw data to physical values           */
+		/* using helper macro.                                                  */
+		uhADCxConvertedData_Voltage_mVolt = __ADC_CALC_DATA_VOLTAGE(VDDA_APPLI, avg)/1;
+		uhADCxConvertedData_Current_mA = (avg * (uint32_t)50000 / DIGITAL_SCALE_12BITS)-(uint32_t)25000;
+		setCurrent(uhADCxConvertedData_Current_mA);
 	}
 }
 
@@ -284,43 +310,25 @@ void transferDoubleswitch2Blind(uint8_t channel)
 			break;
 		case inputdirection_up:
 			if (blinds[channel].blinddirection != blinddirection_up) //if not set do it now
-					{
-				if (blinds[channel].position_actual
-						< blinds[channel].movingtime) //check if we are on the top position
-
-				{
-					blinds[channel].blinddirection = blinddirection_up;
-					setBlindDirection(&blinds[channel]);
-					publish_blind_state(&blinds[channel]);
-					publish_blind_cmd(&blinds[channel]);
-				} else
-				{
-					blinds[channel].blinddirection = blinddirection_off;
-					setBlindDirection(&blinds[channel]);
-					publish_blind_state(&blinds[channel]);
-					publish_blind_cmd(&blinds[channel]);
-				}
+			{
+				blinds[channel].blinddirection = blinddirection_up;
+				setBlindDirection(&blinds[channel]);
+				publish_blind_state(&blinds[channel]);
+				publish_blind_cmd(&blinds[channel]);
 			}
 			break;
 		case inputdirection_down:
 			if (blinds[channel].blinddirection != blinddirection_down) //if not set do it now
-					{
-				if (blinds[channel].position_actual > 0) //check if we are on the bottom position
-						{
-					blinds[channel].blinddirection = blinddirection_down;
-					setBlindDirection(&blinds[channel]);
-					publish_blind_state(&blinds[channel]);
-					publish_blind_cmd(&blinds[channel]);
-				} else {
-					blinds[channel].blinddirection = blinddirection_off;
-					setBlindDirection(&blinds[channel]);
-					publish_blind_state(&blinds[channel]);
-					publish_blind_cmd(&blinds[channel]);
-				}
+			{
+				blinds[channel].blinddirection = blinddirection_down;
+				setBlindDirection(&blinds[channel]);
+				publish_blind_state(&blinds[channel]);
+				publish_blind_cmd(&blinds[channel]);
 			}
 			break;
 		default:
-			if (blinds[channel].blinddirection != blinddirection_off) {
+			if (blinds[channel].blinddirection != blinddirection_off)
+			{
 				blinds[channel].blinddirection = blinddirection_off;
 				setBlindDirection(&blinds[channel]);
 				publish_blind_state(&blinds[channel]);
@@ -367,4 +375,27 @@ void publishCentralDoubleswitchTopic(void)
 			break;
 		}
 	}
+}
+
+
+/**
+  * @brief  Conversion complete callback in non-blocking mode
+  * @param  hadc: ADC handle
+  * @retval None
+  */
+//void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
+//{
+//  /* Invalidate Data Cache to get the updated content of the SRAM on the first half of the ADC converted data buffer: 32 bytes */
+//  SCB_InvalidateDCache_by_Addr((uint32_t *) &aADCxConvertedData[0], ADC_CONVERTED_DATA_BUFFER_SIZE);
+//}
+
+/**
+  * @brief  Conversion DMA half-transfer callback in non-blocking mode
+  * @param  hadc: ADC handle
+  * @retval None
+  */
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+   /* Invalidate Data Cache to get the updated content of the SRAM on the second half of the ADC converted data buffer: 32 bytes */
+  SCB_InvalidateDCache_by_Addr((uint32_t *) &aADCxConvertedData[ADC_CONVERTED_DATA_BUFFER_SIZE/2], ADC_CONVERTED_DATA_BUFFER_SIZE);
 }

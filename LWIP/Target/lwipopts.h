@@ -57,16 +57,14 @@
 #define MEMP_NUM_TCP_PCB 6
 /*----- Default Value for LWIP_TCPIP_CORE_LOCKING: 0 ---*/
 #define LWIP_TCPIP_CORE_LOCKING 1
+/*----- Default Value for MEMP_MEM_INIT: 0 ---*/
+#define MEMP_MEM_INIT 1
 /*----- Value in opt.h for MEM_ALIGNMENT: 1 -----*/
 #define MEM_ALIGNMENT 4
 /*----- Default Value for MEM_SIZE: 1600 ---*/
 #define MEM_SIZE 61440
-/*----- Default Value for MEMP_OVERFLOW_CHECK: 0 ---*/
-#define MEMP_OVERFLOW_CHECK 2
 /*----- Default Value for MEMP_SANITY_CHECK: 0 ---*/
 #define MEMP_SANITY_CHECK 1
-/*----- Default Value for MEM_OVERFLOW_CHECK: 0 ---*/
-#define MEM_OVERFLOW_CHECK 2
 /*----- Default Value for MEM_SANITY_CHECK: 0 ---*/
 #define MEM_SANITY_CHECK 1
 /*----- Default Value for LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT: 0 ---*/

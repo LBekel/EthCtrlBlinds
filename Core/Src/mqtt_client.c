@@ -20,6 +20,7 @@
 #define INPUTSTAT "stat/%s/input"
 #define BLINDSTAT "stat/%s/blind"
 #define BLINDPOS "stat/%s/blindpos"
+#define CURRENT "stat/%s/current"
 #define LWTTELE "tele/%s/LWT"
 #define IPTELE "tele/%s/IP"
 #define MACTELE "tele/%s/MAC"
@@ -33,6 +34,7 @@ const char *payload_off = "OFF";
 static char mqttname[27];
 static uint8_t inpub_id;
 static uint8_t channel;
+int16_t current;
 
 static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection_status_t status);
 static void mqtt_sub_request_cb(void *arg, err_t result);
@@ -90,7 +92,7 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
         publish_blind_cmds();
         subscribe_blind_cmd();
         publish_blind_states();
-        publish_blind_positions();
+        //publish_blind_positions();
 		publish_doubleswitch_states();
     }
     else
@@ -156,7 +158,7 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 
 			}
 			setBlindDirection(&blinds[channel]);
-			publish_blind_state(&blinds[channel]);
+			//publish_blind_state(&blinds[channel]);
         }
         else
         {
@@ -274,8 +276,6 @@ void publish_blind_position(struct blind_s *blind) {
 			sprintf(topic, BLINDPOS"%02d", mqttname, blind->channel); //build Topic
 			char payload[6];
 			double percent = round((double)100.0/blind->movingtime	* blind->position_actual);
-			//uint8_t percent;
-			//percent = percent1);
 			sprintf(payload, "%d", (uint8_t)percent);
 			err = mqtt_publish(&client, topic, payload, strlen(payload), qos,
 					retain, mqtt_pub_request_cb, NULL);
@@ -284,6 +284,26 @@ void publish_blind_position(struct blind_s *blind) {
 				printf("ERROR: publish_blind_position: %d\r\n", err);
 		}
 		blind->position_changed = false;
+		//osDelay(10);
+	}
+}
+
+void publish_current(void) {
+	err_t err = ERR_OK;
+	u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
+	u8_t retain = 0;
+	if (mqtt_client_is_connected(&client))
+	{
+		char topic[sizeof(mqttname) + 19];
+		sprintf(topic, CURRENT, mqttname); //build Topic
+		char payload[7];
+		sprintf(payload, "%d", current);
+		err = mqtt_publish(&client, topic, payload, strlen(payload), qos,
+				retain, mqtt_pub_request_cb, NULL);
+
+		if (err != ERR_OK)
+			printf("ERROR: publish_current: %d\r\n", err);
+
 	}
 }
 
@@ -410,6 +430,7 @@ void StartmqttTask(void *argument)
 			if (mqtt_client_is_connected(&client)) /* while connected, publish */
 			{
 				publish_blind_positions();
+				publish_current();
 				osDelay(1000);
 			}
 			else
@@ -442,3 +463,8 @@ void setMQTTHost(ip_addr_t * mqtt_host_addr)
 	mqtt_server_ip_addr = *mqtt_host_addr;
 	mqtt_disconnect(&client); //disconnect to force new connect
 }
+void setCurrent(int16_t _current)
+{
+	current = _current;
+}
+
