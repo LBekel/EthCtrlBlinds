@@ -15,18 +15,19 @@
 
 const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
-u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen);
-
-bool RelayStatesTemp[num_relay_ch];
+const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen);
 
 // in our HTML file <form method="get" action="/relay.cgi">
 const tCGI RelayCGI = { "/relay.cgi", RelayCGIhandler };
 // in our HTML file <form method="get" action="/mqtt.cgi">
 const tCGI MqttCGI = { "/mqtt.cgi", MqttCGIhandler };
+// in our HTML file <form method="get" action="/learn.cgi">
+const tCGI LearnCGI = { "/learn.cgi", LearnCGIhandler };
 struct ee_storage_s eemqtttopic;
 extern struct ee_storage_s eemqtthost;
 
-#define theCGItableSize 2
+#define theCGItableSize 3
 tCGI theCGItable[theCGItableSize];
 
 #define SSITAGS C(tag1)C(tag2)C(tag3)C(tag4)C(tag5)C(tag6)C(tag7)C(tag8)C(tag9)C(tag10)C(tag11)C(tag12)C(tag13)C(tag14)C(tag15)C(tag16)C(mqtttopic)C(mqtthost)C(blind1)
@@ -42,6 +43,7 @@ void myCGIinit(void)
 {
 	theCGItable[0] = RelayCGI;
 	theCGItable[1] = MqttCGI;
+	theCGItable[2] = LearnCGI;
 	//give the table to the HTTP server
 	http_set_cgi_handlers(theCGItable, theCGItableSize);
 }
@@ -83,7 +85,7 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 	for (uint8_t var = 0; var < iNumParams; ++var)
 	{
 		setBlindDirection(&blinds[var]);
-		publish_blind_state(&blinds[var]);
+		publish_blinddir_stat(&blinds[var]);
 	}
 
 	return "/index.shtml";
@@ -114,8 +116,18 @@ const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[],
 	return "/index.shtml";
 }
 
+const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+{
+    uint8_t channel = 0;
+    sscanf(pcValue[0], "%"PRIu8"", &channel);
+    channel--;
+    blinds[channel].blindlearn = blindlearn_start;
+
+    return "/index.shtml";
+}
+
 // the actual function for SSI
-u16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen) {
+uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen) {
 	if (iIndex < 8)
 	{
 		if (blinds[iIndex].blinddirection == blinddirection_off) {

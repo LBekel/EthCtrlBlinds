@@ -15,16 +15,17 @@
 
 typedef enum {
 	inpub_unknown,
-	inpub_blindcmnd
+	inpub_blindcmnd,
+	inpud_blindposcmnd
 }inpub_t;
 
 void StartmqttTask(void *argument);
-void publish_doubleswitch_states(void);
-void publish_doubleswitch_state(struct doubleswitch_s *doubleswitch);
+void publish_doubleswitch_stats(void);
+void publish_doubleswitch_stat(struct doubleswitch_s *doubleswitch);
 void publish_ip_mac(void);
-void publish_blind_state(struct blind_s *blind);
-void publish_blind_position(struct blind_s *blind);
-void publish_blind_cmd(struct blind_s *blind);
+void publish_blinddir_stat(struct blind_s *blind);
+void publish_blindpos_stat(struct blind_s *blind);
+void publish_blinddir_cmd(struct blind_s *blind);
 void publish_current(void);
 void getMQTTTopic(char * topic);
 void setMQTTTopic(char * topic);

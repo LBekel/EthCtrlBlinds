@@ -80,17 +80,17 @@ const osThreadAttr_t scanInputTask_attributes = {
 };
 /* USER CODE BEGIN PV */
 
-static char name[20];
+static char name[] = "ETH_CONTROL_BLINDS__";
 struct ee_storage_s eemqtttopic = {
 		.VirtAddrStartNb = 1,
 		.VirtWordCount = 10,
 		.pData = (uint16_t*)name};
-static ip_addr_t hostip;
+static ip_addr_t hostip = IPADDR4_INIT_BYTES(192,168,1,3);
 struct ee_storage_s eemqtthost = {
 		.VirtAddrStartNb = 11,
 		.VirtWordCount = 2,
 		.pData = (uint16_t*)&hostip};
-static uint16_t blindmovingtime[] = {10000,9000,8000,7000,6000,5000,4000,3000};
+uint16_t blindmovingtime[] = {10000,9000,8000,7000,6000,5000,4000,3000};
 struct ee_storage_s eeblindmovingtime = {
 		.VirtAddrStartNb = 13,
 		.VirtWordCount = 8,
@@ -190,15 +190,23 @@ int main(void)
   {
     Error_Handler();
   }
-  EE_ReadStorage(&eemqtttopic);
+
+  if(EE_ReadStorage(&eemqtttopic))
+  {
+      EE_ReadStorage(&eemqtttopic);//Write default to flash
+  }
   setMQTTTopic((char*)eemqtttopic.pData);
-  EE_ReadStorage(&eemqtthost);
+
+  if(EE_ReadStorage(&eemqtthost))
+  {
+      EE_ReadStorage(&eemqtthost);//Write default to flash
+  }
   setMQTTHost((ip_addr_t*)eemqtthost.pData);
 
-	//memcpy(eeblindmovingtime.pData,&blindmovingtime,8);
-	//EE_WriteStorage(&eemqtthost);
-
-  EE_ReadStorage(&eeblindmovingtime);
+  if(EE_ReadStorage(&eeblindmovingtime))
+  {
+      EE_WriteStorage(&eeblindmovingtime);//Write default to flash
+  }
   setBlindsMovingTime((uint16_t*)eeblindmovingtime.pData);
 
   /* USER CODE END 2 */
@@ -336,7 +344,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;

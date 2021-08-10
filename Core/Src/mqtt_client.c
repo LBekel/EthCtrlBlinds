@@ -16,15 +16,15 @@
 #include <stdbool.h>
 #include <math.h>
 
-#define BLINDCMND "cmnd/%s/blind"
+#define BLINDDIRCMND "cmnd/%s/blinddir"
+#define BLINDPOSCMND "cmnd/%s/blindpos"
 #define INPUTSTAT "stat/%s/input"
-#define BLINDSTAT "stat/%s/blind"
-#define BLINDPOS "stat/%s/blindpos"
+#define BLINDDIRSTAT "stat/%s/blinddir"
+#define BLINDPOSSTAT "stat/%s/blindpos"
 #define CURRENT "stat/%s/current"
 #define LWTTELE "tele/%s/LWT"
 #define IPTELE "tele/%s/IP"
 #define MACTELE "tele/%s/MAC"
-
 
 static mqtt_client_t client;
 static ip_addr_t mqtt_server_ip_addr;
@@ -41,10 +41,13 @@ static void mqtt_sub_request_cb(void *arg, err_t result);
 static void mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len);
 static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t flags);
 static void mqtt_pub_request_cb(void *arg, err_t result);
-void publish_blind_cmds(void);
-void subscribe_blind_cmd(void);
-void publish_blind_states(void);
-void publish_blind_positions(void);
+void publish_blinddir_cmds(void);
+void subscribe_blinddir_cmd(void);
+void publish_blinddir_stats(void);
+void publish_blindpos_stats(void);
+void publish_blindpos_cmds(void);
+void subscribe_blindpos_cmd(void);
+void publish_blindpos_cmd(struct blind_s *blind);
 void publish_lwt(bool online);
 
 void mqtt_connect(mqtt_client_t *client)
@@ -56,16 +59,16 @@ void mqtt_connect(mqtt_client_t *client)
     memset(&ci, 0, sizeof(ci));
 
     /* Minimal amount of information required is client identifier, so set it here */
-	char will_topic[strlen(mqttname) + 10];
-	sprintf(will_topic, LWTTELE, mqttname);
-	char will_msg[] = "Offline";
+    char will_topic[strlen(mqttname) + 10];
+    sprintf(will_topic, LWTTELE, mqttname);
+    char will_msg[] = "Offline";
 
     ci.client_id = mqttname;
     ci.keep_alive = 60;
     ci.will_msg = will_msg;
     ci.will_topic = will_topic;
     ci.will_qos = 0;
-	ci.will_retain = 1;
+    ci.will_retain = 1;
 
     /* Initiate client and connect to server, if this fails immediately an error code is returned
      otherwise mqtt_connection_cb will be called with connection result after attempting
@@ -89,11 +92,12 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
         mqtt_set_inpub_callback(client, mqtt_incoming_publish_cb, mqtt_incoming_data_cb, arg);
 
         publish_lwt(true);
-        publish_blind_cmds();
-        subscribe_blind_cmd();
-        publish_blind_states();
-        //publish_blind_positions();
-		publish_doubleswitch_states();
+        publish_blinddir_cmds();
+        subscribe_blinddir_cmd();
+        publish_blinddir_stats();
+        publish_blindpos_cmds();
+        subscribe_blindpos_cmd();
+        publish_doubleswitch_stats();
     }
     else
     {
@@ -112,24 +116,30 @@ static void mqtt_sub_request_cb(void *arg, err_t result)
 }
 static void mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len)
 {
-    //sync_printf("Incoming publish at topic %s with total length %u\n", topic, (unsigned int) tot_len);
     /* Decode topic string into a user defined reference */
-	char comparetopic[sizeof(mqttname)+14];
-	sprintf(comparetopic, BLINDCMND, mqttname); //build Topic
+    inpub_id = inpub_unknown;
+    char comparetopic1[sizeof(mqttname) + 17];
+    sprintf(comparetopic1, BLINDDIRCMND, mqttname); //build Topic
 
-    if(strncmp(topic, comparetopic, strlen(comparetopic)) == 0)
+    if(strncmp(topic, comparetopic1, strlen(comparetopic1)) == 0)
     {
         inpub_id = inpub_blindcmnd;
-        uint8_t n = strlen(comparetopic); //start sscanf after topic
-        sscanf(topic+n,"%"PRIu8"",&channel);
+        uint8_t n = strlen(comparetopic1); //start sscanf after topic
+        sscanf(topic + n, "%"PRIu8"", &channel);
         //printf("blindCmd received %d\n\r",channel);
         channel--;
     }
-    else
+
+    char comparetopic2[sizeof(mqttname) + 17];
+    sprintf(comparetopic2, BLINDPOSCMND, mqttname); //build Topic
+    if(strncmp(topic, comparetopic2, strlen(comparetopic2)) == 0)
     {
-        /* For all other topics */
-        inpub_id = inpub_unknown;
+        inpub_id = inpud_blindposcmnd;
+        uint8_t n = strlen(comparetopic2); //start sscanf after topic
+        sscanf(topic + n, "%"PRIu8"", &channel);
+        channel--;
     }
+
 }
 static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t flags)
 {
@@ -143,22 +153,41 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
         /* Call function or do action depending on reference, in this case inpub_id */
         if(inpub_id == inpub_blindcmnd)
         {
-			if (strncmp((const char*) data, payload_up, len) == 0)
-			{
-				blinds[channel].blinddirection = blinddirection_up;
-			}
-			else if (strncmp((const char*) data, payload_down, len) == 0)
-			{
-				blinds[channel].blinddirection = blinddirection_down;
+            if(strncmp((const char*) data, payload_up, len) == 0)
+            {
+                blinds[channel].blinddirection = blinddirection_up;
+                blinds[channel].position_target = blinds[channel].movingtime;
+            }
+            else if(strncmp((const char*) data, payload_down, len) == 0)
+            {
+                blinds[channel].blinddirection = blinddirection_down;
+                blinds[channel].position_target = 0;
 
-			}
-			else if (strncmp((const char*) data, payload_off, len) == 0)
-			{
-				blinds[channel].blinddirection = blinddirection_off;
+            }
+            else if(strncmp((const char*) data, payload_off, len) == 0)
+            {
+                blinds[channel].blinddirection = blinddirection_off;
+            }
+            setBlindDirection(&blinds[channel]);
+            publish_blinddir_stat(&blinds[channel]);
+        }
+        else if(inpub_id == inpud_blindposcmnd)
+        {
 
-			}
-			setBlindDirection(&blinds[channel]);
-			//publish_blind_state(&blinds[channel]);
+            uint8_t percent = 0;
+            sscanf((const char *)data, "%"PRIu8"", &percent);
+            printf("Blindposition channel %d: %d%%\r\n",channel,percent);
+            blinds[channel].position_target = (double)blinds[channel].movingtime/(double)100*percent;
+            if(blinds[channel].position_actual < blinds[channel].position_target)
+            {
+                blinds[channel].blinddirection = blinddirection_up;
+            }
+            else
+            {
+                blinds[channel].blinddirection = blinddirection_down;
+            }
+            setBlindDirection(&blinds[channel]);
+            publish_blinddir_stat(&blinds[channel]);
         }
         else
         {
@@ -168,247 +197,292 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
     else
     {
         /* Handle fragmented payload, store in buffer, write to file or whatever */
-    	printf("Fragmented\n\r");
+        printf("Fragmented\n\r");
     }
 }
-void publish_doubleswitch_states(void)
+void publish_doubleswitch_stats(void)
 {
-	if (mqtt_client_is_connected(&client))
-	{
-		for(uint8_t var = 0; var < num_doubleswitches; ++var)
-		{
-			publish_doubleswitch_state(&doubleswitches[var]);
-		}
+    if(mqtt_client_is_connected(&client))
+    {
+        for(uint8_t var = 0; var < num_doubleswitches; ++var)
+        {
+            publish_doubleswitch_stat(&doubleswitches[var]);
+        }
     }
 }
-void publish_doubleswitch_state(struct doubleswitch_s *doubleswitch)
+void publish_doubleswitch_stat(struct doubleswitch_s *doubleswitch)
 {
-	if (mqtt_client_is_connected(&client))
-	{
-		err_t err = ERR_OK;
-		u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
-		u8_t retain = 0;
+    if(mqtt_client_is_connected(&client))
+    {
+        err_t err = ERR_OK;
+        u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
+        u8_t retain = 0;
 
-		char str[sizeof(mqttname) + 14];
-		sprintf(str, INPUTSTAT"%02d", mqttname, doubleswitch->channel); //build Topic
+        char str[sizeof(mqttname) + 14];
+        sprintf(str, INPUTSTAT"%02d", mqttname, doubleswitch->channel); //build Topic
 
-		switch(doubleswitch->inputdirection)
-		{
-			case inputdirection_off:
-				err = mqtt_publish(&client, str, payload_off, strlen(payload_off), qos,
-				retain, mqtt_pub_request_cb, NULL);
-				break;
-			case inputdirection_up:
-				err = mqtt_publish(&client, str, payload_up, strlen(payload_up), qos,
-				retain, mqtt_pub_request_cb, NULL);
-				break;
-			case inputdirection_down:
-				err = mqtt_publish(&client, str, payload_down, strlen(payload_down), qos,
-				retain, mqtt_pub_request_cb, NULL);
-				break;
-			default:
-				break;
+        switch(doubleswitch->inputdirection)
+        {
+            case inputdirection_off:
+                err = mqtt_publish(&client, str, payload_off, strlen(payload_off), qos, retain, mqtt_pub_request_cb,
+                        NULL);
+                break;
+            case inputdirection_up:
+                err = mqtt_publish(&client, str, payload_up, strlen(payload_up), qos, retain, mqtt_pub_request_cb,
+                        NULL);
+                break;
+            case inputdirection_down:
+                err = mqtt_publish(&client, str, payload_down, strlen(payload_down), qos, retain, mqtt_pub_request_cb,
+                        NULL);
+                break;
+            default:
+                break;
 
-			if (err != ERR_OK)
-				printf("ERROR: publish_input_state %d\n", err);
-		}
-	}
-}
-void publish_blind_states(void)
-{
-	if (mqtt_client_is_connected(&client))
-	{
-		for(uint8_t var = 0; var < num_blinds; ++var)
-		{
-			publish_blind_state(&blinds[var]);
-		}
+                if(err != ERR_OK)
+                    printf("ERROR: publish_input_state %d\n", err);
+        }
     }
 }
-void publish_blind_state(struct blind_s *blind) {
-	err_t err = ERR_OK;
-	u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
-	u8_t retain = 0;
-	if (mqtt_client_is_connected(&client))
-	{
-
-		char topic[sizeof(mqttname) + 19];
-		sprintf(topic, BLINDSTAT"%02d", mqttname, blind->channel); //build Topic
-		switch (blind->blinddirection)
-		{
-			case blinddirection_up:
-				err = mqtt_publish(&client, topic, payload_up, strlen(payload_up),
-									qos, retain, mqtt_pub_request_cb, NULL);
-				break;
-			case blinddirection_down:
-				err = mqtt_publish(&client, topic, payload_down, strlen(payload_down),
-									qos, retain, mqtt_pub_request_cb, NULL);
-				break;
-			case blinddirection_off:
-				err = mqtt_publish(&client, topic, payload_off, strlen(payload_off),
-									qos, retain, mqtt_pub_request_cb, NULL);
-				break;
-			default:
-				break;
-		}
-		if (err != ERR_OK)
-			printf("ERROR: publish_blind_state: %d\r\n", err);
-	}
-}
-void publish_blind_positions(void)
+void publish_blinddir_stats(void)
 {
-	if (mqtt_client_is_connected(&client))
-	{
-		for(uint8_t var = 0; var < num_blinds; ++var)
-		{
-			publish_blind_position(&blinds[var]);
-		}
+    if(mqtt_client_is_connected(&client))
+    {
+        for(uint8_t var = 0; var < num_blinds; ++var)
+        {
+            publish_blinddir_stat(&blinds[var]);
+        }
     }
 }
-void publish_blind_position(struct blind_s *blind) {
-	err_t err = ERR_OK;
-	u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
-	u8_t retain = 0;
-	if (mqtt_client_is_connected(&client))
-	{
-		if(blind->position_changed)
-		{
-			char topic[sizeof(mqttname) + 19];
-			sprintf(topic, BLINDPOS"%02d", mqttname, blind->channel); //build Topic
-			char payload[6];
-			double percent = round((double)100.0/blind->movingtime	* blind->position_actual);
-			sprintf(payload, "%d", (uint8_t)percent);
-			err = mqtt_publish(&client, topic, payload, strlen(payload), qos,
-					retain, mqtt_pub_request_cb, NULL);
-
-			if (err != ERR_OK)
-				printf("ERROR: publish_blind_position: %d\r\n", err);
-		}
-		blind->position_changed = false;
-		//osDelay(10);
-	}
-}
-
-void publish_current(void) {
-	err_t err = ERR_OK;
-	u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
-	u8_t retain = 0;
-	if (mqtt_client_is_connected(&client))
-	{
-		char topic[sizeof(mqttname) + 19];
-		sprintf(topic, CURRENT, mqttname); //build Topic
-		char payload[7];
-		sprintf(payload, "%d", current);
-		err = mqtt_publish(&client, topic, payload, strlen(payload), qos,
-				retain, mqtt_pub_request_cb, NULL);
-
-		if (err != ERR_OK)
-			printf("ERROR: publish_current: %d\r\n", err);
-
-	}
-}
-
-void publish_blind_cmds(void)
+void publish_blinddir_stat(struct blind_s *blind)
 {
-	if (mqtt_client_is_connected(&client))
-	{
-		for(uint8_t var = 0; var < num_blinds; ++var)
-		{
-			publish_blind_cmd(&blinds[var]);
-		}
+    err_t err = ERR_OK;
+    u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
+    u8_t retain = 0;
+    if(mqtt_client_is_connected(&client))
+    {
+
+        char topic[sizeof(mqttname) + 17];
+        sprintf(topic, BLINDDIRSTAT"%02d", mqttname, blind->channel); //build Topic
+        switch(blind->blinddirection)
+        {
+            case blinddirection_up:
+                err = mqtt_publish(&client, topic, payload_up, strlen(payload_up), qos, retain, mqtt_pub_request_cb,
+                        NULL);
+                break;
+            case blinddirection_down:
+                err = mqtt_publish(&client, topic, payload_down, strlen(payload_down), qos, retain, mqtt_pub_request_cb,
+                        NULL);
+                break;
+            case blinddirection_off:
+                err = mqtt_publish(&client, topic, payload_off, strlen(payload_off), qos, retain, mqtt_pub_request_cb,
+                        NULL);
+                break;
+            default:
+                break;
+        }
+        if(err != ERR_OK)
+            printf("ERROR: publish_blind_state: %d\r\n", err);
     }
 }
-void publish_blind_cmd(struct blind_s *blind) {
-	err_t err = ERR_OK;
-	u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
-	u8_t retain = 0;
-	if (mqtt_client_is_connected(&client))
-	{
-		char topic[sizeof(mqttname) + 15];
-		sprintf(topic, BLINDCMND"%02d", mqttname, blind->channel); //build Topic
-		switch (blind->blinddirection) {
-		case blinddirection_up:
-			err = mqtt_publish(&client, topic, payload_up, strlen(payload_up),
-								qos, retain, mqtt_pub_request_cb, NULL);
-			break;
-		case blinddirection_down:
-			err = mqtt_publish(&client, topic, payload_down, strlen(payload_down),
-								qos, retain, mqtt_pub_request_cb, NULL);
-			break;
-		case blinddirection_off:
-			err = mqtt_publish(&client, topic, payload_off, strlen(payload_off),
-								qos, retain, mqtt_pub_request_cb, NULL);
-			break;
-		default:
-			break;
-		}
-		if (err != ERR_OK)
-			printf("ERROR: publish_blind_cmd: %d\r\n", err);
-
-	}
+void publish_blindpos_stats(void)
+{
+    if(mqtt_client_is_connected(&client))
+    {
+        for(uint8_t var = 0; var < num_blinds; ++var)
+        {
+            publish_blindpos_stat(&blinds[var]);
+        }
+    }
 }
-void publish_ip_mac(void) {
-	err_t err = ERR_OK;
-	u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
-	u8_t retain = 0;
-	if (mqtt_client_is_connected(&client))
-	{
-		char topic[strlen(mqttname) + 10];
-		sprintf(topic, IPTELE, mqttname);
-		char ip[16];
-		sprintf(ip, "%s", ipaddr_ntoa(&gnetif.ip_addr));
-		err = mqtt_publish(&client, topic, ip, strlen(ip), qos, retain, NULL, NULL);
-		if (err != ERR_OK)
-			printf("ERROR: publish_ip %d\r\n", err);
+void publish_blindpos_stat(struct blind_s *blind)
+{
+    err_t err = ERR_OK;
+    u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
+    u8_t retain = 0;
+    if(mqtt_client_is_connected(&client))
+    {
+        if(blind->position_changed)
+        {
+            char topic[sizeof(mqttname) + 19];
+            sprintf(topic, BLINDPOSSTAT"%02d", mqttname, blind->channel); //build Topic
+            char payload[6];
+            double percent = round((double) 100.0 / blind->movingtime * blind->position_actual);
+            sprintf(payload, "%d", (uint8_t) percent);
+            err = mqtt_publish(&client, topic, payload, strlen(payload), qos, retain, mqtt_pub_request_cb, NULL);
 
-		sprintf(topic, MACTELE, mqttname);
-		char mac[13];
-		sprintf(mac, "%02x%02x%02x%02x%02x%02x", gnetif.hwaddr[0],gnetif.hwaddr[1],gnetif.hwaddr[2],gnetif.hwaddr[3],gnetif.hwaddr[4],gnetif.hwaddr[5]);
+            if(err != ERR_OK)
+                printf("ERROR: publish_blindpos_stat: %d\r\n", err);
+        }
+        blind->position_changed = false;
+        //osDelay(10);
+    }
+}
 
-		err = mqtt_publish(&client, topic, mac, strlen(mac), qos, retain, NULL, NULL);
+void publish_current(void)
+{
+    err_t err = ERR_OK;
+    u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
+    u8_t retain = 0;
+    if(mqtt_client_is_connected(&client))
+    {
+        char topic[sizeof(mqttname) + 19];
+        sprintf(topic, CURRENT, mqttname); //build Topic
+        char payload[7];
+        sprintf(payload, "%d", current);
+        err = mqtt_publish(&client, topic, payload, strlen(payload), qos, retain, mqtt_pub_request_cb, NULL);
 
-		if (err != ERR_OK)
-			printf("ERROR: publish_mac %d\r\n", err);
+        if(err != ERR_OK)
+            printf("ERROR: publish_current: %d\r\n", err);
 
-	}
+    }
+}
+
+void publish_blinddir_cmds(void)
+{
+    if(mqtt_client_is_connected(&client))
+    {
+        for(uint8_t var = 0; var < num_blinds; ++var)
+        {
+            publish_blinddir_cmd(&blinds[var]);
+        }
+    }
+}
+void publish_blinddir_cmd(struct blind_s *blind)
+{
+    err_t err = ERR_OK;
+    u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
+    u8_t retain = 0;
+    if(mqtt_client_is_connected(&client))
+    {
+        char topic[sizeof(mqttname) + 17];
+        sprintf(topic, BLINDDIRCMND"%02d", mqttname, blind->channel); //build Topic
+        switch(blind->blinddirection)
+        {
+            case blinddirection_up:
+                err = mqtt_publish(&client, topic, payload_up, strlen(payload_up), qos, retain, mqtt_pub_request_cb,
+                        NULL);
+                break;
+            case blinddirection_down:
+                err = mqtt_publish(&client, topic, payload_down, strlen(payload_down), qos, retain, mqtt_pub_request_cb,
+                        NULL);
+                break;
+            case blinddirection_off:
+                err = mqtt_publish(&client, topic, payload_off, strlen(payload_off), qos, retain, mqtt_pub_request_cb,
+                        NULL);
+                break;
+            default:
+                break;
+        }
+        if(err != ERR_OK)
+            printf("ERROR: publish_blinddir_cmd: %d\r\n", err);
+
+    }
+}
+
+void publish_blindpos_cmds(void)
+{
+    if(mqtt_client_is_connected(&client))
+    {
+        for(uint8_t var = 0; var < num_blinds; ++var)
+        {
+            publish_blindpos_cmd(&blinds[var]);
+        }
+    }
+}
+
+void publish_blindpos_cmd(struct blind_s *blind)
+{
+    err_t err = ERR_OK;
+    u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
+    u8_t retain = 0;
+    if(mqtt_client_is_connected(&client))
+    {
+        char topic[sizeof(mqttname) + 18];
+        sprintf(topic, BLINDPOSCMND"%02d", mqttname, blind->channel); //build Topic
+        char payload[2];
+        sprintf(payload, "%d", 0);
+        err = mqtt_publish(&client, topic, payload, strlen(payload), qos, retain, mqtt_pub_request_cb, NULL);
+        if(err != ERR_OK)
+            printf("ERROR: publish_blindpos_cmd: %d\r\n", err);
+
+    }
+}
+void publish_ip_mac(void)
+{
+    err_t err = ERR_OK;
+    u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
+    u8_t retain = 0;
+    if(mqtt_client_is_connected(&client))
+    {
+        char topic[strlen(mqttname) + 10];
+        sprintf(topic, IPTELE, mqttname);
+        char ip[16];
+        sprintf(ip, "%s", ipaddr_ntoa(&gnetif.ip_addr));
+        err = mqtt_publish(&client, topic, ip, strlen(ip), qos, retain, NULL, NULL);
+        if(err != ERR_OK)
+            printf("ERROR: publish_ip %d\r\n", err);
+
+        sprintf(topic, MACTELE, mqttname);
+        char mac[13];
+        sprintf(mac, "%02x%02x%02x%02x%02x%02x", gnetif.hwaddr[0], gnetif.hwaddr[1], gnetif.hwaddr[2], gnetif.hwaddr[3],
+                gnetif.hwaddr[4], gnetif.hwaddr[5]);
+
+        err = mqtt_publish(&client, topic, mac, strlen(mac), qos, retain, NULL, NULL);
+
+        if(err != ERR_OK)
+            printf("ERROR: publish_mac %d\r\n", err);
+
+    }
 }
 void publish_lwt(bool online)
 {
-	if (mqtt_client_is_connected(&client))
-	{
-		err_t err = ERR_OK;
-		u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
+    if(mqtt_client_is_connected(&client))
+    {
+        err_t err = ERR_OK;
+        u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
 
-		char topic[sizeof(mqttname) + 10];
-		sprintf(topic, LWTTELE, mqttname); //build Topic
+        char topic[sizeof(mqttname) + 10];
+        sprintf(topic, LWTTELE, mqttname); //build Topic
 
-		if(online)
-		{
-			char payload[] = "Online";
-			err = mqtt_publish(&client, topic, payload, strlen(payload),
-					qos, 1, mqtt_pub_request_cb, NULL);
-		}
-		else
-		{
-			char payload[] = "Offline";
-			err = mqtt_publish(&client, topic, payload, strlen(payload), qos, 1,
-					mqtt_pub_request_cb, NULL);
-		}
-		if (err != ERR_OK)
-			printf("ERROR: publish_lwt %d\n", err);
-	}
+        if(online)
+        {
+            char payload[] = "Online";
+            err = mqtt_publish(&client, topic, payload, strlen(payload), qos, 1, mqtt_pub_request_cb, NULL);
+        }
+        else
+        {
+            char payload[] = "Offline";
+            err = mqtt_publish(&client, topic, payload, strlen(payload), qos, 1, mqtt_pub_request_cb, NULL);
+        }
+        if(err != ERR_OK)
+            printf("ERROR: publish_lwt %d\n", err);
+    }
 }
-void subscribe_blind_cmd(void)
- {
-	err_t err;
-	for (uint8_t var = 0; var < sizeof(blinds)/sizeof(blinds[0]); ++var)
-	{
-		char topic[sizeof(mqttname)+14];
-		sprintf(topic, BLINDCMND"%02d", mqttname, blinds[var].channel); //build Topic
-		err = mqtt_subscribe(&client, topic, 1, mqtt_sub_request_cb, NULL);
-		if (err != ERR_OK)
-			printf("ERROR: subscribe_blind_cmd: %d\r\n", err);
-		osDelay(10);
-	}
+void subscribe_blinddir_cmd(void)
+{
+    err_t err;
+    for(uint8_t var = 0; var < num_blinds; ++var)
+    {
+        char topic[sizeof(mqttname) + 17];
+        sprintf(topic, BLINDDIRCMND"%02d", mqttname, blinds[var].channel); //build Topic
+        err = mqtt_subscribe(&client, topic, 1, mqtt_sub_request_cb, NULL);
+        if(err != ERR_OK)
+            printf("ERROR: subscribe_blind_cmd: %d\r\n", err);
+        osDelay(10);
+    }
+}
+void subscribe_blindpos_cmd(void)
+{
+    err_t err;
+    for(uint8_t var = 0; var < num_blinds; ++var)
+    {
+        char topic[sizeof(mqttname) + 17];
+        sprintf(topic, BLINDPOSCMND"%02d", mqttname, blinds[var].channel); //build Topic
+        err = mqtt_subscribe(&client, topic, 1, mqtt_sub_request_cb, NULL);
+        if(err != ERR_OK)
+            printf("ERROR: subscribe_blindpos_cmd: %d\r\n", err);
+        osDelay(10);
+    }
 }
 /* Called when publish is complete either with success or failure */
 static void mqtt_pub_request_cb(void *arg, err_t result)
@@ -420,51 +494,51 @@ static void mqtt_pub_request_cb(void *arg, err_t result)
 }
 void StartmqttTask(void *argument)
 {
-	printf("StartmqttTask\r\n");
-	/* Infinite loop */
-	for (;;)
-	{
-		if (gnetif.ip_addr.addr != 0) //we need a IP Address to connect
-		{
+    printf("StartmqttTask\r\n");
+    /* Infinite loop */
+    for(;;)
+    {
+        if(gnetif.ip_addr.addr != 0) //we need a IP Address to connect
+        {
 
-			if (mqtt_client_is_connected(&client)) /* while connected, publish */
-			{
-				publish_blind_positions();
-				publish_current();
-				osDelay(1000);
-			}
-			else
-			{
-				mqtt_connect(&client);
-				osDelay(1000);
-			}
-		}
-		else
-		{
-			osDelay(1000);
-		}
-	}
+            if(mqtt_client_is_connected(&client)) /* while connected, publish */
+            {
+                publish_blindpos_stats();
+                publish_current();
+                osDelay(1000);
+            }
+            else
+            {
+                mqtt_connect(&client);
+                osDelay(1000);
+            }
+        }
+        else
+        {
+            osDelay(1000);
+        }
+    }
 }
-void getMQTTTopic(char * topic)
+void getMQTTTopic(char *topic)
 {
-	strcpy(topic,mqttname);
+    strcpy(topic, mqttname);
 }
-void setMQTTTopic(char * topic)
+void setMQTTTopic(char *topic)
 {
-	strcpy(mqttname,topic);
+    strcpy(mqttname, topic);
 }
-void getMQTTHost(ip_addr_t * mqtt_host_addr)
+void getMQTTHost(ip_addr_t *mqtt_host_addr)
 {
-	*mqtt_host_addr = mqtt_server_ip_addr;
+    *mqtt_host_addr = mqtt_server_ip_addr;
 }
-void setMQTTHost(ip_addr_t * mqtt_host_addr)
+void setMQTTHost(ip_addr_t *mqtt_host_addr)
 {
-	printf("set MQTT Host Address: %s\r\n", ipaddr_ntoa(mqtt_host_addr));
-	mqtt_server_ip_addr = *mqtt_host_addr;
-	mqtt_disconnect(&client); //disconnect to force new connect
+    printf("set MQTT Host Address: %s\r\n", ipaddr_ntoa(mqtt_host_addr));
+    mqtt_server_ip_addr = *mqtt_host_addr;
+    mqtt_disconnect(&client); //disconnect to force new connect
 }
 void setCurrent(int16_t _current)
 {
-	current = _current;
+    current = _current;
 }
 

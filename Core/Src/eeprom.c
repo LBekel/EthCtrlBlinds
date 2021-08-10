@@ -750,11 +750,12 @@ static uint16_t EE_PageTransfer(uint16_t VirtAddress, uint16_t Data)
 
 uint16_t EE_ReadStorage(struct ee_storage_s * storage)
 {
+    uint16_t ret = 0;
 	for (int var = 0; var < storage->VirtWordCount; ++var)
 	{
-		EE_ReadVariable(storage->VirtAddrStartNb+var,  storage->pData+var);
+		ret += EE_ReadVariable(storage->VirtAddrStartNb+var,  storage->pData+var);
 	}
-	return 0;
+	return ret;
 }
 uint16_t EE_WriteStorage(struct ee_storage_s * storage)
  {

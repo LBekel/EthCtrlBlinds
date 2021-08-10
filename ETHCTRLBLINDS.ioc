@@ -1,6 +1,6 @@
 #MicroXplorer Configuration settings - do not modify
 ADC1.Channel-4\#ChannelRegularConversion=ADC_CHANNEL_0
-ADC1.ClockPrescaler=ADC_CLOCK_SYNC_PCLK_DIV4
+ADC1.ClockPrescaler=ADC_CLOCK_SYNC_PCLK_DIV8
 ADC1.ContinuousConvMode=ENABLE
 ADC1.DMAContinuousRequests=ENABLE
 ADC1.EOCSelection=ADC_EOC_SINGLE_CONV

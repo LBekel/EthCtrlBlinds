@@ -17,6 +17,14 @@ typedef enum {
 	blinddirection_down
 }blinddirection_t;
 
+typedef enum {
+    blindlearn_finished,
+    blindlearn_start,
+    blindlearn_up1,
+    blindlearn_down,
+    blindlearn_up2
+}blindlearn_t;
+
 struct blind_s{
 	uint8_t channel;
 	uint16_t downRelay_Pin;
@@ -32,6 +40,7 @@ struct blind_s{
 	bool angle_changed;
 	TickType_t movingtime; //ms
 	TickType_t starttime; //ms
+	blindlearn_t blindlearn;
 };
 
 typedef enum {
