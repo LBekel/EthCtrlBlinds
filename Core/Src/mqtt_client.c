@@ -31,7 +31,7 @@ static ip_addr_t mqtt_server_ip_addr;
 const char *payload_up = "UP";
 const char *payload_down = "DOWN";
 const char *payload_off = "OFF";
-static char mqttname[27];
+static char mqttname[21];
 static uint8_t inpub_id;
 static uint8_t channel;
 int16_t current;
@@ -86,7 +86,7 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
 {
     if(status == MQTT_CONNECT_ACCEPTED)
     {
-        printf("mqtt_connection_cb: Successfully connected\r\n");
+        printf("INFO: mqtt_connection_cb: Successfully connected\r\n");
         publish_ip_mac();
         /* Setup callback for incoming publish requests */
         mqtt_set_inpub_callback(client, mqtt_incoming_publish_cb, mqtt_incoming_data_cb, arg);
@@ -101,10 +101,7 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
     }
     else
     {
-        printf("mqtt_connection_cb: Disconnected, reason: %d\r\n", status);
-
-        /* Its more nice to be connected, so try to reconnect */
-        //mqtt_connect(client);
+        printf("ERROR: mqtt_connection_cb: Disconnected, reason: %d\r\n", status);
     }
 }
 static void mqtt_sub_request_cb(void *arg, err_t result)
@@ -112,7 +109,7 @@ static void mqtt_sub_request_cb(void *arg, err_t result)
     /* Just print the result code here for simplicity,
      normal behavior would be to take some action if subscribe fails like
      notifying user, retry subscribe or disconnect from server */
-    printf("Subscribe result: %d\r\n", result);
+    printf("INFO: Subscribe result: %d\r\n", result);
 }
 static void mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len)
 {
@@ -176,7 +173,7 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 
             uint8_t percent = 0;
             sscanf((const char *)data, "%"PRIu8"", &percent);
-            printf("Blindposition channel %d: %d%%\r\n",channel,percent);
+            //printf("Blindposition channel %d: %d%%\r\n",channel,percent);
             blinds[channel].position_target = (double)blinds[channel].movingtime/(double)100*percent;
             if(blinds[channel].position_actual < blinds[channel].position_target)
             {
@@ -191,13 +188,13 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
         }
         else
         {
-            //printf("mqtt_incoming_data_cb: Ignoring payload...\n");
+            printf("ERROR: mqtt_incoming_data_cb: Ignoring payload\n");
         }
     }
     else
     {
         /* Handle fragmented payload, store in buffer, write to file or whatever */
-        printf("Fragmented\n\r");
+        printf("ERROR: Fragmented\n\r");
     }
 }
 void publish_doubleswitch_stats(void)
@@ -237,10 +234,9 @@ void publish_doubleswitch_stat(struct doubleswitch_s *doubleswitch)
                 break;
             default:
                 break;
-
-                if(err != ERR_OK)
-                    printf("ERROR: publish_input_state %d\n", err);
         }
+        if(err != ERR_OK)
+            printf("ERROR: publish_doubleswitch_stat %d\n", err);
     }
 }
 void publish_blinddir_stats(void)
@@ -281,7 +277,7 @@ void publish_blinddir_stat(struct blind_s *blind)
                 break;
         }
         if(err != ERR_OK)
-            printf("ERROR: publish_blind_state: %d\r\n", err);
+            printf("ERROR: publish_blinddir_stat: %d\r\n", err);
     }
 }
 void publish_blindpos_stats(void)
@@ -467,7 +463,7 @@ void subscribe_blinddir_cmd(void)
         sprintf(topic, BLINDDIRCMND"%02d", mqttname, blinds[var].channel); //build Topic
         err = mqtt_subscribe(&client, topic, 1, mqtt_sub_request_cb, NULL);
         if(err != ERR_OK)
-            printf("ERROR: subscribe_blind_cmd: %d\r\n", err);
+            printf("ERROR: subscribe_blinddir_cmd ch%d: %d\r\n", var+1, err);
         osDelay(10);
     }
 }
@@ -480,7 +476,7 @@ void subscribe_blindpos_cmd(void)
         sprintf(topic, BLINDPOSCMND"%02d", mqttname, blinds[var].channel); //build Topic
         err = mqtt_subscribe(&client, topic, 1, mqtt_sub_request_cb, NULL);
         if(err != ERR_OK)
-            printf("ERROR: subscribe_blindpos_cmd: %d\r\n", err);
+            printf("ERROR: subscribe_blindpos_cmd ch%d: %d\r\n", var+1,  err);
         osDelay(10);
     }
 }

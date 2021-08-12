@@ -143,12 +143,13 @@ int _write(int file, char *data, int len)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  /* Enable I-Cache */
+  /* USER CODE END 1 */
+
+  /* Enable I-Cache---------------------------------------------------------*/
   SCB_EnableICache();
 
-  /* Enable D-Cache */
+  /* Enable D-Cache---------------------------------------------------------*/
   SCB_EnableDCache();
-  /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
 

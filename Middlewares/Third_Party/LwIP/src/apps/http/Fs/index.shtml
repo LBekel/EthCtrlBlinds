@@ -11,29 +11,9 @@
 			<!--#mqtttopic-->
 			<br><label for="mqtthost">MQTT Host:</label>
 			<!--#mqtthost-->
-			<br><input value="Send" type="submit">
+			<br><input value="Save" type="submit">
 		</form>
-		
-		<form method="get" action="/relay.cgi">
-			<label for="blind1">blind1:</label>
-			<!--#tag1--><br>
-			<label for="blind2">blind2:</label>
-			<!--#tag2--><br>
-			<label for="blind3">blind3:</label>
-			<!--#tag3--><br>
-			<label for="blind4">blind4:</label>
-			<!--#tag4--><br>
-			<label for="blind5">blind5:</label>
-			<!--#tag5--><br>
-			<label for="blind6">blind6:</label>
-			<!--#tag6--><br>
-			<label for="blind7">blind7:</label>
-			<!--#tag7--><br>
-			<label for="blind8">blind8:</label>
-			<!--#tag8--><br>
-			<input value="Send" type="submit">
-		</form>
-		
+		<br>
 		<form method="get" action="/learn.cgi">
 			<label for="blind">Blind to learn</label>
 			<select name="blind" id="blind">
@@ -46,7 +26,53 @@
 			  <option value="7">7</option>
 			  <option value="8">8</option>
 			</select>
-			<input value="Learn" type="submit">
+			<br><input value="Learn" type="submit">
+		</form>
+		<br><br>
+		<form method="get" action="/relay.cgi">
+			<table>
+			  <tr>
+				<td><label for="blind1">blind1:</label></td>
+				<td><!--#blind1--></td>
+				<td><!--#time1--></td>
+			  </tr>
+			  <tr>
+				<td><label for="blind2">blind2:</label></td>
+				<td><!--#blind2--></td>
+				<td><!--#time2--></td>
+			  </tr>
+			  <tr>
+				<td><label for="blind1">blind3:</label></td>
+				<td><!--#blind3--></td>
+				<td><!--#time3--></td>
+			  </tr>
+			  <tr>
+				<td><label for="blind4">blind4:</label></td>
+				<td><!--#blind4--></td>
+				<td><!--#time4--></td>
+			  </tr>
+			  <tr>
+				<td><label for="blind5">blind5:</label></td>
+				<td><!--#blind5--></td>
+				<td><!--#time5--></td>
+			  </tr>
+			  <tr>
+				<td><label for="blind1">blind6:</label></td>
+				<td><!--#blind6--></td>
+				<td><!--#time6--></td>
+			  </tr>
+			  <tr>
+				<td><label for="blind7">blind7:</label></td>
+				<td><!--#blind7--></td>
+				<td><!--#time7--></td>
+			  </tr>
+			  <tr>
+				<td><label for="blind8">blind8:</label></td>
+				<td><!--#blind8--></td>
+				<td><!--#time8--></td>
+			  </tr>
+			</table>
+			<input value="Send" type="submit">
 		</form>
 	</body>
 </html>

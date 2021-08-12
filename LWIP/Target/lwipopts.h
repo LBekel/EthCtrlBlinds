@@ -63,14 +63,20 @@
 #define MEM_ALIGNMENT 4
 /*----- Default Value for MEM_SIZE: 1600 ---*/
 #define MEM_SIZE 61440
+/*----- Default Value for MEMP_OVERFLOW_CHECK: 0 ---*/
+#define MEMP_OVERFLOW_CHECK 1
 /*----- Default Value for MEMP_SANITY_CHECK: 0 ---*/
 #define MEMP_SANITY_CHECK 1
+/*----- Default Value for MEM_OVERFLOW_CHECK: 0 ---*/
+#define MEM_OVERFLOW_CHECK 1
 /*----- Default Value for MEM_SANITY_CHECK: 0 ---*/
 #define MEM_SANITY_CHECK 1
 /*----- Default Value for LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT: 0 ---*/
 #define LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT 1
 /*----- Default Value for MEMP_NUM_PBUF: 16 ---*/
 #define MEMP_NUM_PBUF 64
+/*----- Default Value for MEMP_NUM_TCP_PCB_LISTEN: 8 ---*/
+#define MEMP_NUM_TCP_PCB_LISTEN 10
 /*----- Default Value for MEMP_NUM_SYS_TIMEOUT: 7 ---*/
 #define MEMP_NUM_SYS_TIMEOUT 12
 /*----- Default Value for PBUF_POOL_SIZE: 16 ---*/
