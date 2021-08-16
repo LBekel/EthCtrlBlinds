@@ -7,11 +7,17 @@
 	<body>
 		<h3>ETHERNET CONTROL BLINDS</h3>
 		<form method="get" action="/mqtt.cgi">
-			<label for="mqtttopic">MQTT Topic:</label>
-			<!--#mqtttopic-->
-			<br><label for="mqtthost">MQTT Host:</label>
-			<!--#mqtthost-->
-			<br><input value="Save" type="submit">
+		  <table>
+			<tr>
+				<td><label for="mqtttopic">MQTT Topic:</label></td>
+				<td><!--#mqtttopic--></td>
+			</tr>
+			<tr>
+				<td><label for="mqtthost">MQTT Host:</label></td>
+				<td><!--#mqtthost--></td>
+			</tr>
+			</table>
+			<input value="Save" type="submit">
 		</form>
 		<br>
 		<form method="get" action="/learn.cgi">
@@ -32,44 +38,58 @@
 		<form method="get" action="/relay.cgi">
 			<table>
 			  <tr>
+				<th></th>
+				<th>Direction</th>
+				<th>Movingtime</th>
+				<th>Position</th>
+			  </tr>
+			  <tr>
 				<td><label for="blind1">blind1:</label></td>
 				<td><!--#blind1--></td>
 				<td><!--#time1--></td>
+				<td><!--#pos1--></td>
 			  </tr>
 			  <tr>
 				<td><label for="blind2">blind2:</label></td>
 				<td><!--#blind2--></td>
 				<td><!--#time2--></td>
+				<td><!--#pos2--></td>
 			  </tr>
 			  <tr>
 				<td><label for="blind1">blind3:</label></td>
 				<td><!--#blind3--></td>
 				<td><!--#time3--></td>
+				<td><!--#pos3--></td>
 			  </tr>
 			  <tr>
 				<td><label for="blind4">blind4:</label></td>
 				<td><!--#blind4--></td>
 				<td><!--#time4--></td>
+				<td><!--#pos4--></td>
 			  </tr>
 			  <tr>
 				<td><label for="blind5">blind5:</label></td>
 				<td><!--#blind5--></td>
 				<td><!--#time5--></td>
+				<td><!--#pos5--></td>
 			  </tr>
 			  <tr>
 				<td><label for="blind1">blind6:</label></td>
 				<td><!--#blind6--></td>
 				<td><!--#time6--></td>
+				<td><!--#pos6--></td>
 			  </tr>
 			  <tr>
 				<td><label for="blind7">blind7:</label></td>
 				<td><!--#blind7--></td>
 				<td><!--#time7--></td>
+				<td><!--#pos7--></td>
 			  </tr>
 			  <tr>
 				<td><label for="blind8">blind8:</label></td>
 				<td><!--#blind8--></td>
 				<td><!--#time8--></td>
+				<td><!--#pos8--></td>
 			  </tr>
 			</table>
 			<input value="Send" type="submit">

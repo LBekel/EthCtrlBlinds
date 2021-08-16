@@ -30,7 +30,7 @@ extern struct ee_storage_s eemqtthost;
 #define theCGItableSize 3
 tCGI theCGItable[theCGItableSize];
 
-#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(time1)C(time2)C(time3)C(time4)C(time5)C(time6)C(time7)C(time8)
+#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(time1)C(time2)C(time3)C(time4)C(time5)C(time6)C(time7)C(time8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)
 #define C(x) x,
 enum eSSItags { SSITAGS numSSItags };
 #undef C
@@ -167,7 +167,13 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     }
     if((iIndex >= time1) && (iIndex <= time8))
     {
-        sprintf(myStr, "Movingtime: %dms", blindmovingtime[iIndex - time1]);
+        sprintf(myStr, "%dms", blindmovingtime[iIndex - time1]);
+        strcpy(pcInsert, myStr);
+        return strlen(myStr);
+    }
+    if((iIndex >= pos1) && (iIndex <= pos8))
+    {
+        sprintf(myStr, "%ldms", blinds[iIndex - pos1].position_actual);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }
