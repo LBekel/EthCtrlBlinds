@@ -16,7 +16,8 @@
 typedef enum {
 	inpub_unknown,
 	inpub_blindcmnd,
-	inpud_blindposcmnd
+	inpud_blindposcmnd,
+    inpud_blindangcmnd
 }inpub_t;
 
 void StartmqttTask(void *argument);

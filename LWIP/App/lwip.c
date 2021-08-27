@@ -108,6 +108,17 @@ void MX_LWIP_Init(void)
 
 /* USER CODE BEGIN 3 */
   netif_set_status_callback(&gnetif, ethernet_status_callback);
+
+#if LWIP_MDNS_RESPONDER
+  mdns_resp_init();
+  err_t result;
+  result = mdns_resp_add_netif( &gnetif, gnetif.hostname, 300 /*5 min*/);
+  if (result != ERR_OK)
+  {
+      printf("mdns_resp_add_netif failed");
+  }
+#endif
+
 /* USER CODE END 3 */
 }
 

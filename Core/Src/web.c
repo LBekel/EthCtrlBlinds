@@ -1,4 +1,4 @@
-/*
+ /*
  * web.c
  *
  *  Created on: Jun 8, 2021
@@ -64,7 +64,7 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
             if(strcmp(pcValue[var], "up") == 0)
             {
                 blinds[var].blinddirection = blinddirection_up;
-                blinds[var].position_target = blinds[var].movingtime;
+                blinds[var].position_target = blinds[var].position_movingtime;
             }
             else if(strcmp(pcValue[var], "down") == 0)
             {

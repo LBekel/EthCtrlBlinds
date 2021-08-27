@@ -14,7 +14,9 @@
 typedef enum {
 	blinddirection_off,
 	blinddirection_up,
-	blinddirection_down
+	blinddirection_down,
+	blinddirection_angle_up,
+	blinddirection_angle_down,
 }blinddirection_t;
 
 typedef enum {
@@ -35,10 +37,12 @@ struct blind_s{
 	int32_t position_actual; //ms
 	int32_t position_target;//ms
 	bool position_changed;
+	bool angle_function_active;
 	int32_t angle_actual; //ms
 	int32_t angle_target; //ms
+	TickType_t angle_movingtime; //ms
 	bool angle_changed;
-	TickType_t movingtime; //ms
+	TickType_t position_movingtime; //ms
 	TickType_t starttime; //ms
 	blindlearn_t blindlearn;
 };

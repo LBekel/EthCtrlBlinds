@@ -227,6 +227,8 @@ static void low_level_init(struct netif *netif)
   heth.Init.MediaInterface = ETH_MEDIA_INTERFACE_RMII;
 
   /* USER CODE BEGIN MACADDRESS */
+
+
   SetupMacAdress(&MACAddr[0]);
   /* USER CODE END MACADDRESS */
 
@@ -297,7 +299,47 @@ static void low_level_init(struct netif *netif)
 #endif /* LWIP_ARP || LWIP_ETHERNET */
 
 /* USER CODE BEGIN LOW_LEVEL_INIT */
+	  netif_set_hostname(netif,"ETHCTRLBLINDS");
 
+	  //for MDNS MulticastFramesFilter must be set disabled, all other parameters are default values
+	  ETH_MACInitTypeDef macinit;
+	  macinit.Watchdog = ETH_WATCHDOG_ENABLE;
+	  macinit.Jabber = ETH_JABBER_ENABLE;
+	  macinit.InterFrameGap = ETH_INTERFRAMEGAP_96BIT;
+	  macinit.CarrierSense = ETH_CARRIERSENCE_ENABLE;
+	  macinit.ReceiveOwn = ETH_RECEIVEOWN_ENABLE;
+	  macinit.LoopbackMode = ETH_LOOPBACKMODE_DISABLE;
+	  if(heth.Init.ChecksumMode == ETH_CHECKSUM_BY_HARDWARE)
+	  {
+	    macinit.ChecksumOffload = ETH_CHECKSUMOFFLAOD_ENABLE;
+	  }
+	  else
+	  {
+	    macinit.ChecksumOffload = ETH_CHECKSUMOFFLAOD_DISABLE;
+	  }
+	  macinit.RetryTransmission = ETH_RETRYTRANSMISSION_DISABLE;
+	  macinit.AutomaticPadCRCStrip = ETH_AUTOMATICPADCRCSTRIP_DISABLE;
+	  macinit.BackOffLimit = ETH_BACKOFFLIMIT_10;
+	  macinit.DeferralCheck = ETH_DEFFERRALCHECK_DISABLE;
+	  macinit.ReceiveAll = ETH_RECEIVEAll_DISABLE;
+	  macinit.SourceAddrFilter = ETH_SOURCEADDRFILTER_DISABLE;
+	  macinit.PassControlFrames = ETH_PASSCONTROLFRAMES_BLOCKALL;
+	  macinit.BroadcastFramesReception = ETH_BROADCASTFRAMESRECEPTION_ENABLE;
+	  macinit.DestinationAddrFilter = ETH_DESTINATIONADDRFILTER_NORMAL;
+	  macinit.PromiscuousMode = ETH_PROMISCUOUS_MODE_DISABLE;
+	  macinit.MulticastFramesFilter = ETH_MULTICASTFRAMESFILTER_NONE;
+	  macinit.UnicastFramesFilter = ETH_UNICASTFRAMESFILTER_PERFECT;
+	  macinit.HashTableHigh = 0x0;
+	  macinit.HashTableLow = 0x0;
+	  macinit.PauseTime = 0x0;
+	  macinit.ZeroQuantaPause = ETH_ZEROQUANTAPAUSE_DISABLE;
+	  macinit.PauseLowThreshold = ETH_PAUSELOWTHRESHOLD_MINUS4;
+	  macinit.UnicastPauseFrameDetect = ETH_UNICASTPAUSEFRAMEDETECT_DISABLE;
+	  macinit.ReceiveFlowControl = ETH_RECEIVEFLOWCONTROL_DISABLE;
+	  macinit.TransmitFlowControl = ETH_TRANSMITFLOWCONTROL_DISABLE;
+	  macinit.VLANTagComparison = ETH_VLANTAGCOMPARISON_16BIT;
+	  macinit.VLANTagIdentifier = 0x0;
+	  HAL_ETH_ConfigMAC(&heth, &macinit);
 /* USER CODE END LOW_LEVEL_INIT */
 }
 
@@ -763,6 +805,7 @@ void ethernet_status_callback(struct netif *netif)
 {
 	printf("New IP Address: %s\r\n", ipaddr_ntoa(&netif->ip_addr));
 	printf("MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\r\n",netif->hwaddr[0],netif->hwaddr[1],netif->hwaddr[2],netif->hwaddr[3],netif->hwaddr[4],netif->hwaddr[5]);
+	//mdns_resp_announce(netif);
 }
 
 /**

@@ -33,6 +33,7 @@
 #include <stdbool.h>
 #include "web.h"
 #include "dio.h"
+#include "lwip/apps/mdns.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,7 +62,7 @@ UART_HandleTypeDef huart1;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for mqttTask */
@@ -568,6 +569,16 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+#if LWIP_MDNS_RESPONDER
+static void srv_txt(struct mdns_service *service, void *txt_userdata)
+{
+  err_t res;
+  LWIP_UNUSED_ARG(txt_userdata);
+
+  res = mdns_resp_add_service_txtitem(service, "path=/", 6);
+  LWIP_ERROR("mdns add service txt failed\n", (res == ERR_OK), return);
+}
+#endif
 
 /* USER CODE END 4 */
 
@@ -588,6 +599,8 @@ void StartDefaultTask(void *argument)
   // initializing CGI  [= CGI #7 =]
   myCGIinit();
   mySSIinit();
+  mdns_resp_add_service(netif_default, "Web-based Configuration", "_http", DNSSD_PROTO_TCP, 80,300, srv_txt, NULL);
+  //mdns_resp_announce(netif_default);
   /* Infinite loop */
   for(;;)
   {
