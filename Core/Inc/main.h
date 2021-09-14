@@ -40,7 +40,7 @@ extern "C" {
 extern struct ee_storage_s eemqtttopic;
 extern struct ee_storage_s eemqtthost;
 extern struct ee_storage_s eeblindmovingtime;
-extern uint16_t blindmovingtime[];
+extern uint32_t blindmovingtime[];
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

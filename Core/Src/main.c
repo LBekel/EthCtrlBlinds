@@ -91,10 +91,10 @@ struct ee_storage_s eemqtthost = {
 		.VirtAddrStartNb = 11,
 		.VirtWordCount = 2,
 		.pData = (uint16_t*)&hostip};
-uint16_t blindmovingtime[] = {10000,9000,8000,7000,6000,5000,4000,3000};
+uint32_t blindmovingtime[] = {120000,120000,120000,120000,120000,120000,120000,120000};
 struct ee_storage_s eeblindmovingtime = {
 		.VirtAddrStartNb = 13,
-		.VirtWordCount = 8,
+		.VirtWordCount = 16,
 		.pData = (uint16_t*)&blindmovingtime};
 
 uint16_t VirtAddVarTab[20];
