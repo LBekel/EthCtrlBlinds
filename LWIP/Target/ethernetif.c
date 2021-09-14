@@ -227,8 +227,6 @@ static void low_level_init(struct netif *netif)
   heth.Init.MediaInterface = ETH_MEDIA_INTERFACE_RMII;
 
   /* USER CODE BEGIN MACADDRESS */
-
-
   SetupMacAdress(&MACAddr[0]);
   /* USER CODE END MACADDRESS */
 
@@ -828,7 +826,6 @@ void SetupMacAdress(uint8_t *MACAddr)
   MACAddr[3] = digest[3];
   MACAddr[4] = digest[4];
   MACAddr[5] = digest[5];
-  //printf("MAC %04x:%04x:%04x:%04x:%04x:%04x\r\n",MACAddr[0],MACAddr[1],MACAddr[2],MACAddr[3],MACAddr[4],MACAddr[5]);
 }
 
 

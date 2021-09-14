@@ -16,18 +16,18 @@
 const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen);
 
 // in our HTML file <form method="get" action="/relay.cgi">
 const tCGI RelayCGI = {"/relay.cgi", RelayCGIhandler};
-// in our HTML file <form method="get" action="/mqtt.cgi">
 const tCGI MqttCGI = {"/mqtt.cgi", MqttCGIhandler};
-// in our HTML file <form method="get" action="/learn.cgi">
 const tCGI LearnCGI = {"/learn.cgi", LearnCGIhandler};
+const tCGI BootloaderCGI = {"/bootloader.cgi", BootloaderCGIhandler};
 struct ee_storage_s eemqtttopic;
 extern struct ee_storage_s eemqtthost;
 
-#define theCGItableSize 3
+#define theCGItableSize 4
 tCGI theCGItable[theCGItableSize];
 
 #define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(time1)C(time2)C(time3)C(time4)C(time5)C(time6)C(time7)C(time8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)
@@ -44,6 +44,7 @@ void myCGIinit(void)
     theCGItable[0] = RelayCGI;
     theCGItable[1] = MqttCGI;
     theCGItable[2] = LearnCGI;
+    theCGItable[3] = BootloaderCGI;
     //give the table to the HTTP server
     http_set_cgi_handlers(theCGItable, theCGItableSize);
 }
@@ -118,6 +119,23 @@ const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
     sscanf(pcValue[0], "%"PRIu8"", &channel);
     channel--;
     blinds[channel].blindlearn = blindlearn_start;
+
+    return "/index.shtml";
+}
+const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+{
+    #define BOOTLOADER_ADDRESS 0x08000000
+    /* Jump to user application */
+    __disable_irq();
+    typedef  void (*pFunction)(void);
+    pFunction Jump_To_Application;
+    uint32_t JumpAddress = *(__IO uint32_t*) (BOOTLOADER_ADDRESS + 4);
+    Jump_To_Application = (pFunction) JumpAddress;
+    /* Initialize user application's Stack Pointer */
+    __set_MSP(*(__IO uint32_t*) BOOTLOADER_ADDRESS);
+    Jump_To_Application();
+    /* do nothing */
+    while(1);
 
     return "/index.shtml";
 }

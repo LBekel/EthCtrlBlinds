@@ -6,6 +6,10 @@
 	</head>
 	<body>
 		<h3>ETHERNET CONTROL BLINDS</h3>
+		<form method="get" action="/bootloader.cgi">
+			<input value="Start Bootloader" type="submit">
+		</form>
+		<br>
 		<form method="get" action="/mqtt.cgi">
 		  <table>
 			<tr>
