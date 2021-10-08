@@ -36,9 +36,10 @@ _Min_Stack_Size = 0x400 ;	/* required amount of stack */
 /* Memories definition */
 MEMORY
 {
-  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 320K
-  FLASH  (rx)     : ORIGIN = 0x08020000,   LENGTH = 488K
-  DATA	 (rwx)	  : ORIGIN = 0x08008000,   LENGTH = 512K
+  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 320K - 16
+  RAMBLIF (xrw)	  : ORIGIN = 0x2004FFF0,   LENGTH = 16
+  FLASH  (rx)     : ORIGIN = 0x08040000,   LENGTH = 256K + 256K + 256K
+  DATA	 (rwx)	  : ORIGIN = 0x08008000,   LENGTH = 32K + 32K
 }
 
 /* Sections */
@@ -165,6 +166,11 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM
+  
+  .bl_interface_buffer 0x2004FFF0 (NOLOAD) :
+  {
+	KEEP(*(.bl_interface_buffer))
+  } >RAMBLIF
 
   /* Remove information from the compiler libraries */
   /DISCARD/ :

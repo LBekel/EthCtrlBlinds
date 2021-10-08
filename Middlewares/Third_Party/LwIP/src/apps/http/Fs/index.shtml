@@ -36,6 +36,9 @@
 			  <option value="7">7</option>
 			  <option value="8">8</option>
 			</select>
+			<br>
+			<label for="current">Current threshold: </label>
+			<!--#current-->
 			<br><input value="Learn" type="submit">
 		</form>
 		<br><br>

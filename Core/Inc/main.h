@@ -40,7 +40,9 @@ extern "C" {
 extern struct ee_storage_s eemqtttopic;
 extern struct ee_storage_s eemqtthost;
 extern struct ee_storage_s eeblindmovingtime;
+extern struct ee_storage_s eecurrentthreshold;
 extern uint32_t blindmovingtime[];
+extern uint16_t currentthreshold;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -57,7 +59,7 @@ extern uint32_t blindmovingtime[];
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void setReset(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

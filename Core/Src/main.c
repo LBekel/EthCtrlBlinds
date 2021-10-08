@@ -34,6 +34,7 @@
 #include "web.h"
 #include "dio.h"
 #include "lwip/apps/mdns.h"
+#include "jumpcode.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,7 +49,11 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+/* Software Reset */
+/* Rebase the stack pointer and the vector table base address to bootloader */
+#define RESET_CMD() __set_MSP(*(uint32_t *) (0x08018000));  \
+  SCB->VTOR = ((uint32_t) (0x08018000) & SCB_VTOR_TBLOFF_Msk); \
+    NVIC_SystemReset()
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -81,6 +86,8 @@ const osThreadAttr_t scanInputTask_attributes = {
 };
 /* USER CODE BEGIN PV */
 
+uint8_t reset = 0;
+
 static char name[] = "ETH_CONTROL_BLINDS__";
 struct ee_storage_s eemqtttopic = {
 		.VirtAddrStartNb = 1,
@@ -96,8 +103,13 @@ struct ee_storage_s eeblindmovingtime = {
 		.VirtAddrStartNb = 13,
 		.VirtWordCount = 16,
 		.pData = (uint16_t*)&blindmovingtime};
+uint16_t currentthreshold  = 200;
+struct ee_storage_s eecurrentthreshold = {
+        .VirtAddrStartNb = 29,
+        .VirtWordCount = 1,
+        .pData = (uint16_t*)&eecurrentthreshold};
 
-uint16_t VirtAddVarTab[20];
+uint16_t VirtAddVarTab[28];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -146,12 +158,6 @@ int main(void)
   /* USER CODE BEGIN 1 */
   /* USER CODE END 1 */
 
-  /* Enable I-Cache---------------------------------------------------------*/
-  SCB_EnableICache();
-
-  /* Enable D-Cache---------------------------------------------------------*/
-  SCB_EnableDCache();
-
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -175,7 +181,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_DMA_Init();
   /* USER CODE BEGIN 2 */
-
+  printf("Start Application\r\n");
   initBlinds();
   initDoubleswitches();
   /* Unlock the Flash Program Erase controller */
@@ -183,34 +189,43 @@ int main(void)
   {
     Error_Handler();
   }
-  /* EEPROM Init */
-  if( EE_Init() != EE_OK)
-  {
-    Error_Handler();
-  }
-  if( HAL_FLASH_Lock() != HAL_OK)
-  {
-    Error_Handler();
-  }
+//    /* EEPROM Init */
+//    if(EE_Init() == EE_OK)
+//    {
+//
+//        if(EE_ReadStorage(&eemqtttopic))
+//        {
+//            EE_ReadStorage(&eemqtttopic); //Write default to flash
+//        }
+//        setMQTTTopic((char*) eemqtttopic.pData);
+//
+//        if(EE_ReadStorage(&eemqtthost))
+//        {
+//            EE_ReadStorage(&eemqtthost); //Write default to flash
+//        }
+//        setMQTTHost((ip_addr_t*) eemqtthost.pData);
+//
+//        if(EE_ReadStorage(&eeblindmovingtime))
+//        {
+//            EE_WriteStorage(&eeblindmovingtime); //Write default to flash
+//        }
+//        setBlindsMovingTime((uint32_t*) eeblindmovingtime.pData);
+//
+//        if(EE_ReadStorage(&eecurrentthreshold))
+//        {
+//            EE_WriteStorage(&eecurrentthreshold); //Write default to flash
+//        }
+//        setBlindcurrentThreshold(currentthreshold);
+//    }
+//    else
+//    {
+//        printf("ERROR: EE_Init failed\r\n");
+//    }
 
-  if(EE_ReadStorage(&eemqtttopic))
-  {
-      EE_ReadStorage(&eemqtttopic);//Write default to flash
-  }
-  setMQTTTopic((char*)eemqtttopic.pData);
-
-  if(EE_ReadStorage(&eemqtthost))
-  {
-      EE_ReadStorage(&eemqtthost);//Write default to flash
-  }
-  setMQTTHost((ip_addr_t*)eemqtthost.pData);
-
-  if(EE_ReadStorage(&eeblindmovingtime))
-  {
-      EE_WriteStorage(&eeblindmovingtime);//Write default to flash
-  }
-  setBlindsMovingTime((uint16_t*)eeblindmovingtime.pData);
-
+    if(HAL_FLASH_Lock() != HAL_OK)
+    {
+        Error_Handler();
+    }
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -580,6 +595,11 @@ static void srv_txt(struct mdns_service *service, void *txt_userdata)
 }
 #endif
 
+void setReset(void)
+{
+    reset = 1;
+}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -606,6 +626,14 @@ void StartDefaultTask(void *argument)
   {
     osDelay(1000);
     HAL_GPIO_TogglePin(LED_YELLOW_GPIO_Port, LED_YELLOW_Pin);
+    if(reset)
+    {
+        //clearJumpCode();
+        //osDelay(3000);
+        setJumpCode(BOOT, 0);
+        //__disable_irq();
+        RESET_CMD();
+    }
   }
   /* USER CODE END 5 */
 }

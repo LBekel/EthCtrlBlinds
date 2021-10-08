@@ -32,7 +32,7 @@ static mqtt_client_t client;
 static ip_addr_t mqtt_server_ip_addr;
 const char *payload_up = "UP";
 const char *payload_down = "DOWN";
-const char *payload_off = "OFF";
+const char *payload_off = "STOP";
 static char mqttname[21];
 static uint8_t inpub_id;
 static uint8_t channel;
@@ -48,7 +48,6 @@ void subscribe_blinddir_cmd(void);
 void subscribe_blindangle_cmd(void);
 void publish_blinddir_stats(void);
 void publish_blindpos_stats(void);
-void publish_blindpos_cmds(void);
 void subscribe_blindpos_cmd(void);
 void publish_blindpos_cmd(struct blind_s *blind);
 void publish_blindangle_cmds(void);
@@ -100,7 +99,6 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
         publish_blinddir_cmds();
         subscribe_blinddir_cmd();
         publish_blinddir_stats();
-        publish_blindpos_cmds();
         subscribe_blindpos_cmd();
         publish_blindangle_cmds();
         subscribe_blindangle_cmd();
@@ -167,41 +165,30 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
         /* Call function or do action depending on reference, in this case inpub_id */
         if(inpub_id == inpub_blindcmnd)
         {
-            if(strncmp((const char*) data, payload_up, len) == 0)
-            {
-                blinds[channel].blinddirection = blinddirection_up;
-                blinds[channel].position_target = blinds[channel].position_movingtime;
-            }
-            else if(strncmp((const char*) data, payload_down, len) == 0)
-            {
-                blinds[channel].blinddirection = blinddirection_down;
-                blinds[channel].position_target = 0;
-
-            }
-            else if(strncmp((const char*) data, payload_off, len) == 0)
+            if(strncmp((const char*) data, payload_off, len) == 0)
             {
                 blinds[channel].blinddirection = blinddirection_off;
-            }
-            setBlindDirection(&blinds[channel]);
-            publish_blinddir_stat(&blinds[channel]);
-        }
-        else if(inpub_id == inpud_blindposcmnd)
-        {
-
-            uint8_t percent = 0;
-            sscanf((const char *)data, "%"PRIu8"", &percent);
-            //printf("Blindposition channel %d: %d%%\r\n",channel,percent);
-            blinds[channel].position_target = (double)blinds[channel].position_movingtime/(double)100*percent;
-            if(blinds[channel].position_actual < blinds[channel].position_target)
-            {
-                blinds[channel].blinddirection = blinddirection_up;
+                setBlindDirection(&blinds[channel]);
+                publish_blinddir_stat(&blinds[channel]);
             }
             else
             {
-                blinds[channel].blinddirection = blinddirection_down;
+                uint8_t percent = 0;
+                if(sscanf((const char *)data, "%"PRIu8"", &percent)!=EOF)
+                {
+                    blinds[channel].position_target = (double)blinds[channel].position_movingtime/(double)100*percent;
+                    if(blinds[channel].position_actual > blinds[channel].position_target)
+                    {
+                        blinds[channel].blinddirection = blinddirection_up;
+                    }
+                    else
+                    {
+                        blinds[channel].blinddirection = blinddirection_down;
+                    }
+                    setBlindDirection(&blinds[channel]);
+                    publish_blinddir_stat(&blinds[channel]);
+                }
             }
-            setBlindDirection(&blinds[channel]);
-            publish_blinddir_stat(&blinds[channel]);
         }
         else if(inpub_id == inpud_blindangcmnd)
         {
@@ -442,41 +429,13 @@ void publish_blinddir_cmd(struct blind_s *blind)
     }
 }
 
-void publish_blindpos_cmds(void)
-{
-    if(mqtt_client_is_connected(&client))
-    {
-        for(uint8_t var = 0; var < num_blinds; ++var)
-        {
-            publish_blindpos_cmd(&blinds[var]);
-        }
-    }
-}
-
-void publish_blindpos_cmd(struct blind_s *blind)
-{
-    err_t err = ERR_OK;
-    u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
-    u8_t retain = 0;
-    if(mqtt_client_is_connected(&client))
-    {
-        char topic[sizeof(mqttname) + 18];
-        sprintf(topic, BLINDPOSCMND"%02d", mqttname, blind->channel); //build Topic
-        char payload[2];
-        sprintf(payload, "%d", 0);
-        err = mqtt_publish(&client, topic, payload, strlen(payload), qos, retain, mqtt_pub_request_cb, NULL);
-        if(err != ERR_OK)
-            printf("ERROR: publish_blindpos_cmd: %d\r\n", err);
-
-    }
-}
 void publish_blindangle_cmds(void)
 {
     if(mqtt_client_is_connected(&client))
     {
         for(uint8_t var = 0; var < num_blinds; ++var)
         {
-            publish_blindpos_cmd(&blinds[var]);
+            publish_blindangle_cmd(&blinds[var]);
         }
     }
 }

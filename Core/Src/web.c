@@ -30,7 +30,7 @@ extern struct ee_storage_s eemqtthost;
 #define theCGItableSize 4
 tCGI theCGItable[theCGItableSize];
 
-#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(time1)C(time2)C(time3)C(time4)C(time5)C(time6)C(time7)C(time8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)
+#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(current)C(time1)C(time2)C(time3)C(time4)C(time5)C(time6)C(time7)C(time8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)
 #define C(x) x,
 enum eSSItags { SSITAGS numSSItags };
 #undef C
@@ -65,12 +65,13 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
             if(strcmp(pcValue[var], "up") == 0)
             {
                 blinds[var].blinddirection = blinddirection_up;
-                blinds[var].position_target = blinds[var].position_movingtime;
+                blinds[var].position_target = 0;
             }
             else if(strcmp(pcValue[var], "down") == 0)
             {
                 blinds[var].blinddirection = blinddirection_down;
-                blinds[var].position_target = 0;
+                blinds[var].position_target = blinds[var].position_movingtime;
+
             }
             else
             {
@@ -115,29 +116,32 @@ const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pc
 
 const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
-    uint8_t channel = 0;
-    sscanf(pcValue[0], "%"PRIu8"", &channel);
-    channel--;
-    blinds[channel].blindlearn = blindlearn_start;
-
+    for(uint8_t var = 0; var < iNumParams; var++)
+    {
+        if(strcmp(pcParam[var], theSSItags[current]) == 0)
+        {
+            sscanf(pcValue[var], "%"PRIu16"", &currentthreshold);
+            EE_WriteStorage(&eecurrentthreshold);
+            printf("Current threshold: %d\r\n", currentthreshold);
+            setBlindcurrentThreshold(currentthreshold);
+        }
+        if(strncmp(pcParam[var], "blind", 5) == 0)
+        {
+            uint8_t channel = 0;
+            sscanf(pcValue[var], "%"PRIu8"", &channel);
+            channel--;
+            blinds[channel].blindlearn = blindlearn_start;
+        }
+    }
     return "/index.shtml";
 }
+
 const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
-    #define BOOTLOADER_ADDRESS 0x08000000
-    /* Jump to user application */
-    __disable_irq();
-    typedef  void (*pFunction)(void);
-    pFunction Jump_To_Application;
-    uint32_t JumpAddress = *(__IO uint32_t*) (BOOTLOADER_ADDRESS + 4);
-    Jump_To_Application = (pFunction) JumpAddress;
-    /* Initialize user application's Stack Pointer */
-    __set_MSP(*(__IO uint32_t*) BOOTLOADER_ADDRESS);
-    Jump_To_Application();
-    /* do nothing */
-    while(1);
+    setReset();
+    printf("Reset\r\n");
 
-    return "/index.shtml";
+    return "/startapp.html";
 }
 
 // the actual function for SSI
@@ -185,7 +189,7 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     }
     if((iIndex >= time1) && (iIndex <= time8))
     {
-        sprintf(myStr, "%dms", blindmovingtime[iIndex - time1]);
+        sprintf(myStr, "%ldms", blindmovingtime[iIndex - time1]);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }
@@ -209,6 +213,13 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
         getMQTTHost(&mqtt_host_addr);
         sprintf(myStr, "<input value=\"%s\" name=\"mqtthost\" type=\"text\" id=\"mqtthost\" size=\"50\">",
                 ipaddr_ntoa(&mqtt_host_addr));
+        strcpy(pcInsert, myStr);
+        return strlen(myStr);
+    }
+    if(iIndex == current)
+    {
+        sprintf(myStr, "<input value=\"%d\" name=\"current\" type=\"text\" id=\"current\" size=\"10\">",
+                getBlindcurrentThreshold());
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }

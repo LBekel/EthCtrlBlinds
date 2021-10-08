@@ -45,7 +45,7 @@ IN17_GPIO_Port, IN18_GPIO_Port};
 
 #define maxmovingtime 240000//ms
 #define minlearndelay 1000//ms
-#define blindcurrent_threshold 200//mA
+int16_t blindcurrent_threshold = 200;//mA
 int16_t blindcurrent = 0;
 /* Definition of ADCx conversions data table size */
 #define ADC_CONVERTED_DATA_BUFFER_SIZE   ((uint32_t)  545)   /* Size of array aADCxConvertedData[] */
@@ -79,7 +79,7 @@ void initBlinds()
     }
 }
 
-void setBlindsMovingTime(uint16_t *blindsmovingtime)
+void setBlindsMovingTime(uint32_t *blindsmovingtime)
 {
     for(int var = 0; var < 8; ++var)
     {
@@ -108,12 +108,12 @@ void setBlindDirection(struct blind_s *blind)
             }
             break;
         case blinddirection_up:
-            if(blind->position_actual < blind->position_target) //check if we are not on the top position
+            if(blind->position_actual > blind->position_target) //check if we are not on the top position
             {
                 HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
                 HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
                 blind->starttime = xTaskGetTickCount();
-                blind->angle_actual = blind->angle_movingtime; //moving up, so angle is at max
+                blind->angle_actual = 0; //moving down, so angle is at min
             }
             else
             {
@@ -125,12 +125,12 @@ void setBlindDirection(struct blind_s *blind)
             break;
         case blinddirection_down:
 
-            if(blind->position_actual > blind->position_target) //check if we are not on the buttom position
+            if(blind->position_actual < blind->position_target) //check if we are not on the buttom position
             {
                 HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_SET);
                 HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
                 blind->starttime = xTaskGetTickCount();
-                blind->angle_actual = 0; //moving down, so angle is at min
+                blind->angle_actual = blind->angle_movingtime; //moving up, so angle is at max
             }
             else
             {
@@ -247,21 +247,6 @@ void checkBlindPosition(uint8_t channel)
     switch(blinds[channel].blinddirection)
     {
         case blinddirection_angle_up:
-            blinds[channel].angle_actual += xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
-            blinds[channel].starttime = xTaskGetTickCount();
-            blinds[channel].angle_changed = true;
-            if(blinds[channel].angle_actual >= blinds[channel].angle_target) //angle reached
-            {
-                blinds[channel].angle_actual = blinds[channel].angle_target;
-                blinds[channel].blinddirection = blinddirection_off;
-                publish_blinddir_stat(&blinds[channel]);
-                publish_blinddir_cmd(&blinds[channel]);
-                doubleswitches[channel].inputdirection = inputdirection_off;
-                doubleswitches[channel].changed = true;
-                publish_doubleswitch_stat(&doubleswitches[channel]);
-            }
-            break;
-        case blinddirection_angle_down:
             blinds[channel].angle_actual -= xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
             blinds[channel].starttime = xTaskGetTickCount();
             blinds[channel].angle_changed = true;
@@ -276,11 +261,26 @@ void checkBlindPosition(uint8_t channel)
                 publish_doubleswitch_stat(&doubleswitches[channel]);
             }
             break;
+        case blinddirection_angle_down:
+            blinds[channel].angle_actual += xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
+            blinds[channel].starttime = xTaskGetTickCount();
+            blinds[channel].angle_changed = true;
+            if(blinds[channel].angle_actual >= blinds[channel].angle_target) //angle reached
+            {
+                blinds[channel].angle_actual = blinds[channel].angle_target;
+                blinds[channel].blinddirection = blinddirection_off;
+                publish_blinddir_stat(&blinds[channel]);
+                publish_blinddir_cmd(&blinds[channel]);
+                doubleswitches[channel].inputdirection = inputdirection_off;
+                doubleswitches[channel].changed = true;
+                publish_doubleswitch_stat(&doubleswitches[channel]);
+            }
+            break;
         case blinddirection_up:
-            blinds[channel].position_actual += xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms;
+            blinds[channel].position_actual -= xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms;
             blinds[channel].starttime = xTaskGetTickCount();
             blinds[channel].position_changed = true;
-            if(blinds[channel].position_actual >= blinds[channel].position_target)
+            if(blinds[channel].position_actual <= blinds[channel].position_target)
             {
                 blinds[channel].position_actual = blinds[channel].position_target;
                 if(blinds[channel].angle_function_active)
@@ -300,10 +300,10 @@ void checkBlindPosition(uint8_t channel)
             }
             break;
         case blinddirection_down:
-            blinds[channel].position_actual -= xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
+            blinds[channel].position_actual += xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
             blinds[channel].starttime = xTaskGetTickCount();
             blinds[channel].position_changed = true;
-            if(blinds[channel].position_actual <= blinds[channel].position_target)
+            if(blinds[channel].position_actual >= blinds[channel].position_target)
             {
                 blinds[channel].position_actual = blinds[channel].position_target;
                 if(blinds[channel].angle_function_active)
@@ -444,15 +444,35 @@ int16_t getCurrentADC(void)
     /* Retrieve ADC conversion data */
     //uhADCxConvertedData = HAL_ADC_GetValue((ADC_HandleTypeDef*)argument);
     uint32_t avg = 0;
+    uint32_t min = aADCxConvertedData[0];
+    uint32_t max = aADCxConvertedData[0];
     for(int var = 0; var < ADC_CONVERTED_DATA_BUFFER_SIZE; ++var)
     {
         avg += aADCxConvertedData[var];
+        if(aADCxConvertedData[var]<min)
+        {
+            min = aADCxConvertedData[var];
+        }
+        if(aADCxConvertedData[var]>max)
+        {
+            max = aADCxConvertedData[var];
+        }
     }
     avg /= ADC_CONVERTED_DATA_BUFFER_SIZE;
     /* Computation of ADC conversions raw data to physical values           */
     /* using helper macro.                                                  */
     //uhADCxConvertedData_Voltage_mVolt = __ADC_CALC_DATA_VOLTAGE(VDDA_APPLI, avg) / 1;
-    return (avg * (uint32_t) 50000 / DIGITAL_SCALE_12BITS) - (uint32_t) 25000;
+    //return (avg * (uint32_t) 50000 / DIGITAL_SCALE_12BITS) - (uint32_t) 25000;
+    return ((max * (uint32_t) 50000 / DIGITAL_SCALE_12BITS) - (uint32_t) 25000)*0.707;
+}
+
+void setBlindcurrentThreshold(int16_t value)
+{
+    blindcurrent_threshold = value;
+}
+uint16_t getBlindcurrentThreshold(void)
+{
+    return blindcurrent_threshold;
 }
 
 void learnBlindMovingTime(struct blind_s *blind)

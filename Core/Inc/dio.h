@@ -113,11 +113,13 @@ uint16_t Input_Pins[num_input_ch];
 GPIO_TypeDef * Input_Ports[num_input_ch];
 
 void initBlinds(void);
-void setBlindsMovingTime(uint16_t * blindsmovingtime);
+void setBlindsMovingTime(uint32_t * blindsmovingtime);
 void setBlindDirection(struct blind_s *blind);
 void initDoubleswitches(void);
 void readDoubleswitches(void);
 void readDoubleswitch(struct doubleswitch_s *doubleswitch);
+void setBlindcurrentThreshold(int16_t value);
+uint16_t getBlindcurrentThreshold(void);
 void StartScanInputsTask(void *argument);
 
 #endif /* INC_DIO_H_ */
