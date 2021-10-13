@@ -103,7 +103,7 @@
     <listAttribute key="org.eclipse.debug.ui.favoriteGroups">
         <listEntry value="org.eclipse.debug.ui.launchGroup.debug"/>
     </listAttribute>
-    <stringAttribute key="org.eclipse.dsf.launch.MEMORY_BLOCKS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&lt;memoryBlockExpressionList context=&quot;reserved-for-future-use&quot;/&gt;"/>
+    <stringAttribute key="org.eclipse.dsf.launch.MEMORY_BLOCKS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&lt;memoryBlockExpressionList context=&quot;reserved-for-future-use&quot;&gt;&lt;gdbmemoryBlockExpression address=&quot;536894160&quot; label=&quot;0x20005ad0&quot;/&gt;&lt;gdbmemoryBlockExpression address=&quot;134217728&quot; label=&quot;0x08000000&quot;/&gt;&lt;gdbmemoryBlockExpression address=&quot;0&quot; label=&quot;0&quot;/&gt;&lt;/memoryBlockExpressionList&gt;"/>
     <stringAttribute key="process_factory_id" value="org.eclipse.cdt.dsf.gdb.GdbProcessFactory"/>
     <stringAttribute key="saved_expressions&lt;seperator&gt;Unknown" value="0x8040000,0x8000800,0x8008000,0x80040000,0x08080000,0x8088000,0x80C0000,0x2000016c,0x2000016d,0x2000016b,0x20005a4c,0x2001e00,0x2001e001,0x2001ea4c,0x2000ea4c"/>
 </launchConfiguration>

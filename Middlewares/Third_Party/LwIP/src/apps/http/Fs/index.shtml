@@ -6,6 +6,7 @@
 	</head>
 	<body>
 		<h3>ETHERNET CONTROL BLINDS</h3>
+		Version: <!--#compiled--><br><br>
 		<form method="get" action="/bootloader.cgi">
 			<input value="Start Bootloader" type="submit">
 		</form>

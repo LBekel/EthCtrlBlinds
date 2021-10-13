@@ -30,7 +30,7 @@ extern struct ee_storage_s eemqtthost;
 #define theCGItableSize 4
 tCGI theCGItable[theCGItableSize];
 
-#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(current)C(time1)C(time2)C(time3)C(time4)C(time5)C(time6)C(time7)C(time8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)
+#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(current)C(time1)C(time2)C(time3)C(time4)C(time5)C(time6)C(time7)C(time8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)C(compiled)
 #define C(x) x,
 enum eSSItags { SSITAGS numSSItags };
 #undef C
@@ -86,7 +86,7 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
         publish_blinddir_stat(&blinds[var]);
     }
 
-    return "/index.shtml";
+    return "/return.html";
 
 }
 
@@ -111,7 +111,7 @@ const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pc
             setMQTTHost(&mqtt_host_addr);
         }
     }
-    return "/index.shtml";
+    return "/return.html";
 }
 
 const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
@@ -133,7 +133,7 @@ const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
             blinds[channel].blindlearn = blindlearn_start;
         }
     }
-    return "/index.shtml";
+    return "/return.html";
 }
 
 const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
@@ -220,6 +220,12 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     {
         sprintf(myStr, "<input value=\"%d\" name=\"current\" type=\"text\" id=\"current\" size=\"10\">",
                 getBlindcurrentThreshold());
+        strcpy(pcInsert, myStr);
+        return strlen(myStr);
+    }
+    if(iIndex == compiled)
+    {
+        sprintf(myStr, __DATE__ " " __TIME__);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }

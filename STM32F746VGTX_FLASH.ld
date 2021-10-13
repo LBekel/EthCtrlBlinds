@@ -38,8 +38,8 @@ MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 320K - 16
   RAMBLIF (xrw)	  : ORIGIN = 0x2004FFF0,   LENGTH = 16
+  DATA	 (rwx)	  : ORIGIN = 0x08018000,   LENGTH = 32K + 32K
   FLASH  (rx)     : ORIGIN = 0x08040000,   LENGTH = 256K + 256K + 256K
-  DATA	 (rwx)	  : ORIGIN = 0x08008000,   LENGTH = 32K + 32K
 }
 
 /* Sections */

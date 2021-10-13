@@ -63,6 +63,8 @@ void setReset(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define BOOTLOADER_ADDRESS 0x08000000
+
 #define MQTT_REQ_MAX_IN_FLIGHT 70
 #define LWIP_NUM_NETIF_CLIENT_DATA 1
 #define MQTT_OUTPUT_RINGBUF_SIZE 1024
