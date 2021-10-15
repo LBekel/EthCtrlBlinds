@@ -9,6 +9,7 @@
 #include "dio.h"
 #include "mqtt_client.h"
 #include <stdbool.h>
+#include "math.h"
 
 uint16_t Relay_Pins[] = {
 OUT01DOWN_Pin, OUT01UP_Pin,
@@ -43,15 +44,17 @@ IN09_GPIO_Port, IN10_GPIO_Port, IN11_GPIO_Port, IN12_GPIO_Port,
 IN13_GPIO_Port, IN14_GPIO_Port, IN15_GPIO_Port, IN16_GPIO_Port,
 IN17_GPIO_Port, IN18_GPIO_Port};
 
+
 #define maxmovingtime 240000//ms
 #define minlearndelay 1000//ms
 int16_t blindcurrent_threshold = 200;//mA
-int16_t blindcurrent = 0;
+
 /* Definition of ADCx conversions data table size */
 #define ADC_CONVERTED_DATA_BUFFER_SIZE   ((uint32_t)  545)   /* Size of array aADCxConvertedData[] */
 //to fit one 50Hz periode into buffer
 //495Cycles/108Mhz*8=36.66us
 //20ms/36.66us = 545samples
+uint16_t adc_offset = 0; //counts
 
 /* Variable containing ADC conversions data */
 ALIGN_32BYTES(static uint16_t aADCxConvertedData[ADC_CONVERTED_DATA_BUFFER_SIZE]);
@@ -59,6 +62,8 @@ ALIGN_32BYTES(static uint16_t aADCxConvertedData[ADC_CONVERTED_DATA_BUFFER_SIZE]
 void checkBlindPosition(uint8_t channel);
 void transferDoubleswitch2Blind(uint8_t channel);
 void publishCentralDoubleswitchTopic(void);
+GPIO_PinState GPIO_Read_Up_Debounced(struct doubleswitch_s *doubleswitch);
+GPIO_PinState GPIO_Read_Down_Debounced(struct doubleswitch_s *doubleswitch);
 
 void initBlinds()
 {
@@ -73,17 +78,25 @@ void initBlinds()
         blinds[var].position_actual = 0;
         blinds[var].position_changed = true;
         blinds[var].blindlearn = blindlearn_finished;
-        blinds[var].angle_function_active = true;
+        blinds[var].angle_function_active = false;
         blinds[var].angle_actual = 0;
         blinds[var].angle_movingtime = 1000;
     }
 }
 
-void setBlindsMovingTime(uint32_t *blindsmovingtime)
+void setBlindsMovingTimeUp(uint32_t *blindsmovingtime)
 {
     for(int var = 0; var < 8; ++var)
     {
-        blinds[var].position_movingtime = (uint32_t) blindsmovingtime[var];
+        blinds[var].position_movingtimeup = (uint32_t) blindsmovingtime[var];
+    }
+}
+
+void setBlindsMovingTimeDown(uint32_t *blindsmovingtime)
+{
+    for(int var = 0; var < 8; ++var)
+    {
+        blinds[var].position_movingtimedown = (uint32_t) blindsmovingtime[var];
     }
 }
 
@@ -161,6 +174,8 @@ void initDoubleswitches(void)
         doubleswitches[var].upInput_Port = Input_Ports[var * 2 + 1];
         doubleswitches[var].inputdirection = blinddirection_off;
         doubleswitches[var].changed = false;
+        doubleswitches[var].updebounce = 0;
+        doubleswitches[var].downdebounce = 0;
     }
 }
 
@@ -174,7 +189,7 @@ void readDoubleswitches(void)
 
 void readDoubleswitch(struct doubleswitch_s *doubleswitch)
 {
-    if(HAL_GPIO_ReadPin(doubleswitch->upInput_Port, doubleswitch->upInput_Pin) == GPIO_PIN_SET)
+    if(GPIO_Read_Up_Debounced(doubleswitch) == GPIO_PIN_SET)
     {
         if(doubleswitch->inputdirection != inputdirection_up && doubleswitch->inputdirection != inputdirection_up_end) //if state changed
         {
@@ -187,14 +202,14 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch)
         {
             TickType_t timeelapsed;
             timeelapsed = xTaskGetTickCount() - doubleswitch->upInput_starttime;
-            if(timeelapsed > 3000) //button pressed 3sec
+            if(timeelapsed > 2000) //button pressed 2sec
             {
                 doubleswitch->inputdirection = inputdirection_up_end;
                 doubleswitch->changed = true;
             }
         }
     }
-    else if(HAL_GPIO_ReadPin(doubleswitch->downInput_Port, doubleswitch->downInput_Pin) == GPIO_PIN_SET)
+    else if(GPIO_Read_Down_Debounced(doubleswitch) == GPIO_PIN_SET)
     {
 
         if(doubleswitch->inputdirection != inputdirection_down
@@ -209,7 +224,7 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch)
         {
             TickType_t timeelapsed;
             timeelapsed = xTaskGetTickCount() - doubleswitch->downInput_starttime;
-            if(timeelapsed > 3000) //button pressed 3sec
+            if(timeelapsed > 2000) //button pressed 2sec
             {
                 doubleswitch->inputdirection = inputdirection_down_end;
                 doubleswitch->changed = true;
@@ -343,20 +358,20 @@ void transferDoubleswitch2Blind(uint8_t channel)
                 if(blinds[channel].blinddirection != blinddirection_up) //if not set do it now
                 {
                     blinds[channel].blinddirection = blinddirection_up;
-                    blinds[channel].position_target = blinds[channel].position_movingtime;
+                    blinds[channel].position_target = 0;
                     setBlindDirection(&blinds[channel]);
                     publish_blinddir_stat(&blinds[channel]);
-                    publish_blinddir_cmd(&blinds[channel]);
+                    //publish_blinddir_cmd(&blinds[channel]);
                 }
                 break;
             case inputdirection_down:
                 if(blinds[channel].blinddirection != blinddirection_down) //if not set do it now
                 {
                     blinds[channel].blinddirection = blinddirection_down;
-                    blinds[channel].position_target = 0;
+                    blinds[channel].position_target = blinds[channel].position_movingtimeup;
                     setBlindDirection(&blinds[channel]);
                     publish_blinddir_stat(&blinds[channel]);
-                    publish_blinddir_cmd(&blinds[channel]);
+                    //publish_blinddir_cmd(&blinds[channel]);
                 }
                 break;
             default:
@@ -365,7 +380,7 @@ void transferDoubleswitch2Blind(uint8_t channel)
                     blinds[channel].blinddirection = blinddirection_off;
                     setBlindDirection(&blinds[channel]);
                     publish_blinddir_stat(&blinds[channel]);
-                    publish_blinddir_cmd(&blinds[channel]);
+                    //publish_blinddir_cmd(&blinds[channel]);
                 }
                 break;
         }
@@ -446,6 +461,7 @@ int16_t getCurrentADC(void)
     uint32_t avg = 0;
     uint32_t min = aADCxConvertedData[0];
     uint32_t max = aADCxConvertedData[0];
+    int16_t value = 0;
     for(int var = 0; var < ADC_CONVERTED_DATA_BUFFER_SIZE; ++var)
     {
         avg += aADCxConvertedData[var];
@@ -463,7 +479,8 @@ int16_t getCurrentADC(void)
     /* using helper macro.                                                  */
     //uhADCxConvertedData_Voltage_mVolt = __ADC_CALC_DATA_VOLTAGE(VDDA_APPLI, avg) / 1;
     //return (avg * (uint32_t) 50000 / DIGITAL_SCALE_12BITS) - (uint32_t) 25000;
-    return ((max * (uint32_t) 50000 / DIGITAL_SCALE_12BITS) - (uint32_t) 25000)*0.707;
+    value = ((max * (uint32_t) 50000 / DIGITAL_SCALE_12BITS) - (uint32_t) 25000)*0.707 - adc_offset;
+    return value;
 }
 
 void setBlindcurrentThreshold(int16_t value)
@@ -475,7 +492,7 @@ uint16_t getBlindcurrentThreshold(void)
     return blindcurrent_threshold;
 }
 
-void learnBlindMovingTime(struct blind_s *blind)
+void learnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
 {
     static TickType_t movingtime = 0;
     static TickType_t movinguptime = 0;
@@ -485,7 +502,7 @@ void learnBlindMovingTime(struct blind_s *blind)
         switch(blind->blindlearn)
         {
             case blindlearn_start:
-                blind->position_movingtime = maxmovingtime; //set to max value to disable automatic off function
+                blind->position_movingtimeup = maxmovingtime; //set to max value to disable automatic off function
                 blind->position_actual = 0; //first move will go up, so set position to bottom
                 blind->position_target = maxmovingtime; //set to max value to disable automatic off function;
                 blind->blinddirection = blinddirection_up;
@@ -512,6 +529,8 @@ void learnBlindMovingTime(struct blind_s *blind)
                     blind->position_target = maxmovingtime; //set to max value to disable automatic off function;
                     blind->blinddirection = blinddirection_up;
                     setBlindDirection(blind);
+                    blindmovingtimedown[blind->channel-1] = blind->position_movingtimedown;
+                    EE_WriteStorage(&eeblindmovingtimedown);
                     blind->blindlearn = blindlearn_up2;
                     movingtime = blind->starttime; //store the time of start moving
                 }
@@ -521,36 +540,70 @@ void learnBlindMovingTime(struct blind_s *blind)
                 {
                     movingdowntime = xTaskGetTickCount() - movingtime; //store delta time
                     printf("movingdowntime: %ld\r\n", movingdowntime);
-                    blind->position_movingtime = movinguptime;
-                    blind->position_actual = blind->position_movingtime;
+                    blind->position_movingtimeup = movinguptime;
+                    blind->position_actual = blind->position_movingtimeup;
                     blind->position_changed = true;
                     blind->blindlearn = blindlearn_finished;
                     blind->blinddirection = blinddirection_off;
                     setBlindDirection(blind);
-                    blindmovingtime[blind->channel-1] = blind->position_movingtime;
-                    EE_WriteStorage(&eeblindmovingtime);
+                    blindmovingtimeup[blind->channel-1] = blind->position_movingtimeup;
+                    EE_WriteStorage(&eeblindmovingtimeup);
                 }
             default:
                 break;
         }
     }
 }
+#define BLINDCURRENT_BUF_SIZE 50
+int16_t movingavg(int16_t blindcurrent)
+{
+    static uint8_t i = 0;
+    static int16_t blindcurrent_buf[BLINDCURRENT_BUF_SIZE];
+
+    blindcurrent_buf[i] = blindcurrent;
+    i++;
+    if(i>=BLINDCURRENT_BUF_SIZE)
+    {
+        i=0;
+    }
+    int32_t avg = 0;
+    for(int var = 0; var < BLINDCURRENT_BUF_SIZE; ++var)
+    {
+        avg += blindcurrent_buf[var];
+    }
+
+    return avg / BLINDCURRENT_BUF_SIZE;
+}
 
 void StartScanInputTask(void *argument)
 {
-    /* Infinite loop */
-
+    int16_t blindcurrent_avg;
+    int16_t blindcurrent = 0;
+    TickType_t xTicks = xTaskGetTickCount();
     if(HAL_ADC_Start_DMA((ADC_HandleTypeDef*) argument, (uint32_t*) aADCxConvertedData,
     ADC_CONVERTED_DATA_BUFFER_SIZE) != HAL_OK)
     {
         /* ADC conversion start error */
         Error_Handler();
     }
+
+    //all relays are off, get ADC Offset
+    for (int8_t var = 0; var < BLINDCURRENT_BUF_SIZE; ++var)
+    {
+        blindcurrent = getCurrentADC();
+        blindcurrent_avg = movingavg(blindcurrent);
+        osDelayUntil(xTicks+10);//100Hz
+        xTicks = xTaskGetTickCount();
+    }
+    adc_offset = blindcurrent_avg;
+
+
+    /* Infinite loop */
     for(;;)
     {
         for(int var = 0; var < num_doubleswitches - 1; ++var)
         {
-            learnBlindMovingTime(&blinds[var]);
+            learnBlindMovingTime(&blinds[var], blindcurrent_avg);
             readDoubleswitch(&doubleswitches[var]);
             transferDoubleswitch2Blind(var);
             checkBlindPosition(var);
@@ -558,7 +611,54 @@ void StartScanInputTask(void *argument)
         readDoubleswitch(&doubleswitches[8]);
         publishCentralDoubleswitchTopic();
         blindcurrent = getCurrentADC();
-        setCurrent(blindcurrent);
-        osDelay(10);
+
+        blindcurrent_avg = movingavg(blindcurrent);
+        if(blinds[0].blinddirection == blinddirection_down)
+        {
+            blindcurrent_avg -= 300;
+        }
+
+        //printf("Current: %d\r\n",blindcurrent_avg);
+        setMQTTCurrent(blindcurrent_avg);
+        //osDelay(10);//100Hz
+        osDelayUntil(xTicks+10);//100Hz
+        xTicks = xTaskGetTickCount();
     }
+}
+
+
+GPIO_PinState GPIO_Read_Up_Debounced(struct doubleswitch_s *doubleswitch)
+{
+    GPIO_PinState pinstate = HAL_GPIO_ReadPin(doubleswitch->upInput_Port, doubleswitch->upInput_Pin);
+
+    // do a moving average of the digital input... result button between 0 and 10
+    doubleswitch->updebounce = round(((float)doubleswitch->updebounce * 9.0 + pinstate * 10.0) / 10.0);
+
+    if(doubleswitch->updebounce > 5)
+    {
+        return GPIO_PIN_SET;
+    }
+    else
+    {
+        return GPIO_PIN_RESET;
+    }
+
+}
+
+GPIO_PinState GPIO_Read_Down_Debounced(struct doubleswitch_s *doubleswitch)
+{
+    GPIO_PinState pinstate = HAL_GPIO_ReadPin(doubleswitch->downInput_Port, doubleswitch->downInput_Pin);
+
+    // do a moving average of the digital input... result button between 0 and 10
+    doubleswitch->downdebounce = round(((float)doubleswitch->downdebounce * 9.0 + pinstate * 10.0) / 10.0);
+
+    if(doubleswitch->downdebounce > 5)
+    {
+        return GPIO_PIN_SET;
+    }
+    else
+    {
+        return GPIO_PIN_RESET;
+    }
+
 }

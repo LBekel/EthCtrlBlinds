@@ -42,7 +42,8 @@ struct blind_s{
 	int32_t angle_target; //ms
 	TickType_t angle_movingtime; //ms
 	bool angle_changed;
-	TickType_t position_movingtime; //ms
+	TickType_t position_movingtimeup; //ms
+	TickType_t position_movingtimedown; //ms
 	TickType_t starttime; //ms
 	blindlearn_t blindlearn;
 };
@@ -59,8 +60,10 @@ struct doubleswitch_s{
 	uint8_t channel;
 	uint16_t downInput_Pin;
 	GPIO_TypeDef * downInput_Port;
+    uint8_t downdebounce;
 	uint16_t upInput_Pin;
 	GPIO_TypeDef * upInput_Port;
+    uint8_t updebounce;
 	inputdirection_t inputdirection;
 	bool changed;
 	TickType_t downInput_starttime; //ms
@@ -113,7 +116,8 @@ uint16_t Input_Pins[num_input_ch];
 GPIO_TypeDef * Input_Ports[num_input_ch];
 
 void initBlinds(void);
-void setBlindsMovingTime(uint32_t * blindsmovingtime);
+void setBlindsMovingTimeUp(uint32_t * blindsmovingtime);
+void setBlindsMovingTimeDown(uint32_t *blindsmovingtime);
 void setBlindDirection(struct blind_s *blind);
 void initDoubleswitches(void);
 void readDoubleswitches(void);

@@ -51,8 +51,8 @@
 /* USER CODE BEGIN PM */
 /* Software Reset */
 /* Rebase the stack pointer and the vector table base address to bootloader */
-#define RESET_CMD() __set_MSP(*(uint32_t *) (BOOTLOADER_ADDRESS));  \
-  SCB->VTOR = ((uint32_t) (BOOTLOADER_ADDRESS) & SCB_VTOR_TBLOFF_Msk); \
+#define RESET_CMD() __set_MSP(*(uint32_t *) (ADDR_FLASH_SECTOR_0));  \
+  SCB->VTOR = ((uint32_t) (ADDR_FLASH_SECTOR_0) & SCB_VTOR_TBLOFF_Msk); \
     NVIC_SystemReset()
 /* USER CODE END PM */
 
@@ -100,13 +100,19 @@ struct ee_storage_s eemqtthost = {
 		.VirtWordCount = 2,
 		.pData = (uint16_t*)&hostip};
 
-uint32_t blindmovingtime[] = {120000,120000,120000,120000,120000,120000,120000,120000};
-struct ee_storage_s eeblindmovingtime = {
+uint32_t blindmovingtimeup[] = {120000,120000,120000,120000,120000,120000,120000,120000};
+struct ee_storage_s eeblindmovingtimeup = {
 		.VirtAddrStartNb = 13,
 		.VirtWordCount = 16,
-		.pData = (uint16_t*)&blindmovingtime};
-uint16_t currentthreshold  = 200;
+		.pData = (uint16_t*)&blindmovingtimeup};
 
+uint32_t blindmovingtimedown[] = {120000,120000,120000,120000,120000,120000,120000,120000};
+struct ee_storage_s eeblindmovingtimedown = {
+        .VirtAddrStartNb = 13,
+        .VirtWordCount = 16,
+        .pData = (uint16_t*)&blindmovingtimedown};
+
+uint16_t currentthreshold  = 200;
 struct ee_storage_s eecurrentthreshold = {
         .VirtAddrStartNb = 29,
         .VirtWordCount = 1,
@@ -164,9 +170,6 @@ int main(void)
   /* Enable I-Cache---------------------------------------------------------*/
   SCB_EnableICache();
 
-  /* Enable D-Cache---------------------------------------------------------*/
-  //SCB_EnableDCache();
-
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -215,11 +218,17 @@ int main(void)
         }
         setMQTTHost((ip_addr_t*) eemqtthost.pData);
 
-        if(EE_ReadStorage(&eeblindmovingtime))
+        if(EE_ReadStorage(&eeblindmovingtimeup))
         {
-            EE_WriteStorage(&eeblindmovingtime); //Write default to flash
+            EE_WriteStorage(&eeblindmovingtimeup); //Write default to flash
         }
-        setBlindsMovingTime((uint32_t*) eeblindmovingtime.pData);
+        setBlindsMovingTimeUp((uint32_t*) eeblindmovingtimeup.pData);
+
+        if(EE_ReadStorage(&eeblindmovingtimedown))
+        {
+            EE_WriteStorage(&eeblindmovingtimedown); //Write default to flash
+        }
+        setBlindsMovingTimeDown((uint32_t*) eeblindmovingtimedown.pData);
 
         if(EE_ReadStorage(&eecurrentthreshold))
         {
@@ -712,6 +721,8 @@ void Error_Handler(void)
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin,GPIO_PIN_SET);
+  //go to Bootloader after restart
+  setJumpCode(BOOT, 0);
   while (1)
   {
 	  osDelay(100);

@@ -30,7 +30,7 @@ extern struct ee_storage_s eemqtthost;
 #define theCGItableSize 4
 tCGI theCGItable[theCGItableSize];
 
-#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(current)C(time1)C(time2)C(time3)C(time4)C(time5)C(time6)C(time7)C(time8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)C(compiled)
+#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(current)C(timeup1)C(timeup2)C(timeup3)C(timeup4)C(timeup5)C(timeup6)C(timeup7)C(timeup8)C(timedo1)C(timedo2)C(timedo3)C(timedo4)C(timedo5)C(timedo6)C(timedo7)C(timedo8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)C(compiled)
 #define C(x) x,
 enum eSSItags { SSITAGS numSSItags };
 #undef C
@@ -70,7 +70,7 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
             else if(strcmp(pcValue[var], "down") == 0)
             {
                 blinds[var].blinddirection = blinddirection_down;
-                blinds[var].position_target = blinds[var].position_movingtime;
+                blinds[var].position_target = blinds[var].position_movingtimeup;
 
             }
             else
@@ -187,9 +187,15 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
             return strlen(myStr);
         }
     }
-    if((iIndex >= time1) && (iIndex <= time8))
+    if((iIndex >= timeup1) && (iIndex <= timeup8))
     {
-        sprintf(myStr, "%ldms", blindmovingtime[iIndex - time1]);
+        sprintf(myStr, "%ldms", blindmovingtimeup[iIndex - timeup1]);
+        strcpy(pcInsert, myStr);
+        return strlen(myStr);
+    }
+    if((iIndex >= timedo1) && (iIndex <= timedo8))
+    {
+        sprintf(myStr, "%ldms", blindmovingtimeup[iIndex - timedo1]);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }
@@ -203,7 +209,7 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     {
         char tempTopic[27];
         getMQTTTopic(tempTopic);
-        sprintf(myStr, "<input value=\"%s\" name=\"mqtttopic\" type=\"text\" id=\"mqtttopic\" size=\"50\">", tempTopic);
+        sprintf(myStr, "<input value=\"%s\" name=\"mqtttopic\" type=\"text\" id=\"mqtttopic\" size=\"25\">", tempTopic);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }
@@ -211,7 +217,7 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     {
         ip_addr_t mqtt_host_addr;
         getMQTTHost(&mqtt_host_addr);
-        sprintf(myStr, "<input value=\"%s\" name=\"mqtthost\" type=\"text\" id=\"mqtthost\" size=\"50\">",
+        sprintf(myStr, "<input value=\"%s\" name=\"mqtthost\" type=\"text\" id=\"mqtthost\" size=\"25\">",
                 ipaddr_ntoa(&mqtt_host_addr));
         strcpy(pcInsert, myStr);
         return strlen(myStr);

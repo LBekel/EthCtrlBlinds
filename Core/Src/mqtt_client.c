@@ -174,9 +174,11 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
             else
             {
                 uint8_t percent = 0;
-                if(sscanf((const char *)data, "%"PRIu8"", &percent)!=EOF)
+                char fmt_str[10] = "";
+                snprintf(fmt_str, 10, "%%%dPRIu8", len);
+                if(sscanf((const char *)data, fmt_str, &percent)!=EOF)
                 {
-                    blinds[channel].position_target = (double)blinds[channel].position_movingtime/(double)100*percent;
+                    blinds[channel].position_target = (double)blinds[channel].position_movingtimeup/(double)100*percent;
                     if(blinds[channel].position_actual > blinds[channel].position_target)
                     {
                         blinds[channel].blinddirection = blinddirection_up;
@@ -323,7 +325,7 @@ void publish_blindpos_stat(struct blind_s *blind)
             char topic[sizeof(mqttname) + 19];
             sprintf(topic, BLINDPOSSTAT"%02d", mqttname, blind->channel); //build Topic
             char payload[6];
-            double percent = round((double) 100.0 / blind->position_movingtime * blind->position_actual);
+            double percent = round((double) 100.0 / blind->position_movingtimeup * blind->position_actual);
             sprintf(payload, "%d", (uint8_t) percent);
             err = mqtt_publish(&client, topic, payload, strlen(payload), qos, retain, mqtt_pub_request_cb, NULL);
 
@@ -601,7 +603,7 @@ void setMQTTHost(ip_addr_t *mqtt_host_addr)
     mqtt_server_ip_addr = *mqtt_host_addr;
     mqtt_disconnect(&client); //disconnect to force new connect
 }
-void setCurrent(int16_t _current)
+void setMQTTCurrent(int16_t _current)
 {
     current = _current;
 }

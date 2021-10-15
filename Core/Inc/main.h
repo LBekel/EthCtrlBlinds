@@ -39,9 +39,11 @@ extern "C" {
 /* USER CODE BEGIN ET */
 extern struct ee_storage_s eemqtttopic;
 extern struct ee_storage_s eemqtthost;
-extern struct ee_storage_s eeblindmovingtime;
+extern struct ee_storage_s eeblindmovingtimeup;
+extern struct ee_storage_s eeblindmovingtimedown;
 extern struct ee_storage_s eecurrentthreshold;
-extern uint32_t blindmovingtime[];
+extern uint32_t blindmovingtimeup[];
+extern uint32_t blindmovingtimedown[];
 extern uint16_t currentthreshold;
 /* USER CODE END ET */
 
@@ -63,8 +65,6 @@ void setReset(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define BOOTLOADER_ADDRESS 0x08000000
-
 #define MQTT_REQ_MAX_IN_FLIGHT 70
 #define LWIP_NUM_NETIF_CLIENT_DATA 1
 #define MQTT_OUTPUT_RINGBUF_SIZE 1024

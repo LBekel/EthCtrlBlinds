@@ -6,9 +6,7 @@
 typedef enum
 {
   AUTO,
-  BOOT,
-  STMBOOT,
-  SELECT
+  BOOT
 } JumpCode_t;
 
 void clearJumpCode();

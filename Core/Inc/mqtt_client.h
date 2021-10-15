@@ -32,6 +32,6 @@ void getMQTTTopic(char * topic);
 void setMQTTTopic(char * topic);
 void getMQTTHost(ip_addr_t * mqtt_host_addr);
 void setMQTTHost(ip_addr_t * mqtt_host_addr);
-void setCurrent(int16_t _current);
+void setMQTTCurrent(int16_t _current);
 
 #endif /* TRIGGER_MQTT_CLIENT_H_ */
