@@ -16,6 +16,7 @@
 const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+const char* MovetimeCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen);
 
@@ -23,14 +24,15 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen);
 const tCGI RelayCGI = {"/relay.cgi", RelayCGIhandler};
 const tCGI MqttCGI = {"/mqtt.cgi", MqttCGIhandler};
 const tCGI LearnCGI = {"/learn.cgi", LearnCGIhandler};
+const tCGI MovetimeCGI = {"/movtime.cgi", MovetimeCGIhandler};
 const tCGI BootloaderCGI = {"/bootloader.cgi", BootloaderCGIhandler};
 struct ee_storage_s eemqtttopic;
 extern struct ee_storage_s eemqtthost;
 
-#define theCGItableSize 4
+#define theCGItableSize 5
 tCGI theCGItable[theCGItableSize];
 
-#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(current)C(timeup1)C(timeup2)C(timeup3)C(timeup4)C(timeup5)C(timeup6)C(timeup7)C(timeup8)C(timedo1)C(timedo2)C(timedo3)C(timedo4)C(timedo5)C(timedo6)C(timedo7)C(timedo8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)C(compiled)
+#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(current)C(timeup)C(timeup1)C(timeup2)C(timeup3)C(timeup4)C(timeup5)C(timeup6)C(timeup7)C(timeup8)C(timedo)C(timedo1)C(timedo2)C(timedo3)C(timedo4)C(timedo5)C(timedo6)C(timedo7)C(timedo8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)C(compiled)
 #define C(x) x,
 enum eSSItags { SSITAGS numSSItags };
 #undef C
@@ -44,7 +46,8 @@ void myCGIinit(void)
     theCGItable[0] = RelayCGI;
     theCGItable[1] = MqttCGI;
     theCGItable[2] = LearnCGI;
-    theCGItable[3] = BootloaderCGI;
+    theCGItable[3] = MovetimeCGI;
+    theCGItable[4] = BootloaderCGI;
     //give the table to the HTTP server
     http_set_cgi_handlers(theCGItable, theCGItableSize);
 }
@@ -136,6 +139,32 @@ const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
     return "/return.html";
 }
 
+const char* MovetimeCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+{
+    uint8_t channel = 0;
+    for(uint8_t var = 0; var < iNumParams; var++)
+    {
+        if(strcmp(pcParam[var], theSSItags[timeup]) == 0)
+        {
+            sscanf(pcValue[var], "%"PRIu32"", &blindmovingtimeup[channel]);
+            EE_WriteStorage(&eeblindmovingtimeup);
+            setBlindsMovingTimeUp(&blindmovingtimeup[channel]);
+        }
+        if(strcmp(pcParam[var], theSSItags[timedo]) == 0)
+        {
+            sscanf(pcValue[var], "%"PRIu32"", &blindmovingtimedown[channel]);
+            EE_WriteStorage(&eeblindmovingtimedown);
+            setBlindsMovingTimeDown(&blindmovingtimedown[channel]);
+        }
+        if(strncmp(pcParam[var], "blind", 5) == 0)
+        {
+            sscanf(pcValue[var], "%"PRIu8"", &channel);
+            channel--;
+        }
+    }
+    return "/return.html";
+}
+
 const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
     setReset();
@@ -195,7 +224,7 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     }
     if((iIndex >= timedo1) && (iIndex <= timedo8))
     {
-        sprintf(myStr, "%ldms", blindmovingtimeup[iIndex - timedo1]);
+        sprintf(myStr, "%ldms", blindmovingtimedown[iIndex - timedo1]);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }
@@ -209,7 +238,7 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     {
         char tempTopic[27];
         getMQTTTopic(tempTopic);
-        sprintf(myStr, "<input value=\"%s\" name=\"mqtttopic\" type=\"text\" id=\"mqtttopic\" size=\"25\">", tempTopic);
+        sprintf(myStr, "<input value=\"%s\" name=\"mqtttopic\" type=\"text\" id=\"mqtttopic\" size=\"25\" maxlength=\"10\">", tempTopic);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }
@@ -224,8 +253,20 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     }
     if(iIndex == current)
     {
-        sprintf(myStr, "<input value=\"%d\" name=\"current\" type=\"text\" id=\"current\" size=\"10\">",
+        sprintf(myStr, "<input value=\"%d\" name=\"current\" type=\"text\" id=\"current\" size=\"10\" maxlength=\"4\">",
                 getBlindcurrentThreshold());
+        strcpy(pcInsert, myStr);
+        return strlen(myStr);
+    }
+    if(iIndex == timeup)
+    {
+        sprintf(myStr, "<input value=\"0\" name=\"timeup\" type=\"text\" id=\"timeup\" size=\"10\" maxlength=\"5\">");
+        strcpy(pcInsert, myStr);
+        return strlen(myStr);
+    }
+    if(iIndex == timedo)
+    {
+        sprintf(myStr, "<input value=\"0\" name=\"timedo\" type=\"text\" id=\"timedo\" size=\"10\" maxlength=\"5\">");
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }

@@ -48,6 +48,33 @@
 			<input value="Learn" type="submit">
 		</form>
 		<br><br>
+		<form method="get" action="/movtime.cgi">
+			<table>
+			  <tr>
+				<td><label for="blind">Blind to set movingtime:</label></td>
+				<td><select name="blind" id="blind">
+				  <option value="1">1</option>
+				  <option value="2">2</option>
+				  <option value="3">3</option>
+				  <option value="4">4</option>
+				  <option value="5">5</option>
+				  <option value="6">6</option>
+				  <option value="7">7</option>
+				  <option value="8">8</option>
+				</select></td>
+			  </tr>
+			  <tr>
+				<td><label for="current">Movingtime up:</label></td>
+				<td><!--#timeup--></td>
+			  </tr>
+			  <tr>
+				<td><label for="current">Movingtime down:</label></td>
+				<td><!--#timedo--></td>
+			  </tr>
+			</table> 
+			<input value="Set Movingtime" type="submit">
+		</form>
+		<br><br>
 		<form method="get" action="/relay.cgi">
 			<table>
 			  <tr>

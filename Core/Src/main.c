@@ -208,13 +208,13 @@ int main(void)
 
         if(EE_ReadStorage(&eemqtttopic))
         {
-            EE_ReadStorage(&eemqtttopic); //Write default to flash
+            EE_WriteStorage(&eemqtttopic); //Write default to flash
         }
         setMQTTTopic((char*) eemqtttopic.pData);
 
         if(EE_ReadStorage(&eemqtthost))
         {
-            EE_ReadStorage(&eemqtthost); //Write default to flash
+            EE_WriteStorage(&eemqtthost); //Write default to flash
         }
         setMQTTHost((ip_addr_t*) eemqtthost.pData);
 

@@ -297,6 +297,7 @@ void checkBlindPosition(uint8_t channel)
             blinds[channel].position_changed = true;
             if(blinds[channel].position_actual <= blinds[channel].position_target)
             {
+                //top position reached
                 blinds[channel].position_actual = blinds[channel].position_target;
                 if(blinds[channel].angle_function_active)
                 {
@@ -320,6 +321,7 @@ void checkBlindPosition(uint8_t channel)
             blinds[channel].position_changed = true;
             if(blinds[channel].position_actual >= blinds[channel].position_target)
             {
+                //buttom position reached
                 blinds[channel].position_actual = blinds[channel].position_target;
                 if(blinds[channel].angle_function_active)
                 {
