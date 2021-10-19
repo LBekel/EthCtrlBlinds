@@ -628,15 +628,16 @@ void StartScanInputTask(void *argument)
     }
 }
 
+#define DEBOUNCE_CYCLE 10.0
 
 GPIO_PinState GPIO_Read_Up_Debounced(struct doubleswitch_s *doubleswitch)
 {
     GPIO_PinState pinstate = HAL_GPIO_ReadPin(doubleswitch->upInput_Port, doubleswitch->upInput_Pin);
 
-    // do a moving average of the digital input... result button between 0 and 10
-    doubleswitch->updebounce = round(((float)doubleswitch->updebounce * 9.0 + pinstate * 10.0) / 10.0);
+    // do a moving average of the digital input... result button between 0 and (2 * DEBOUNCE_CYCLE)
+    doubleswitch->updebounce = ((float)doubleswitch->updebounce * ((2 * DEBOUNCE_CYCLE)-1) + pinstate * 2 * DEBOUNCE_CYCLE) / 2 * DEBOUNCE_CYCLE;
 
-    if(doubleswitch->updebounce > 5)
+    if(doubleswitch->updebounce > DEBOUNCE_CYCLE)
     {
         return GPIO_PIN_SET;
     }
@@ -651,10 +652,10 @@ GPIO_PinState GPIO_Read_Down_Debounced(struct doubleswitch_s *doubleswitch)
 {
     GPIO_PinState pinstate = HAL_GPIO_ReadPin(doubleswitch->downInput_Port, doubleswitch->downInput_Pin);
 
-    // do a moving average of the digital input... result button between 0 and 10
-    doubleswitch->downdebounce = round(((float)doubleswitch->downdebounce * 9.0 + pinstate * 10.0) / 10.0);
+    // do a moving average of the digital input... result button between 0 and (2 * DEBOUNCE_CYCLE)
+    doubleswitch->updebounce = ((float)doubleswitch->updebounce * ((2 * DEBOUNCE_CYCLE)-1) + pinstate * 2 * DEBOUNCE_CYCLE) / 2 * DEBOUNCE_CYCLE;
 
-    if(doubleswitch->downdebounce > 5)
+    if(doubleswitch->updebounce > DEBOUNCE_CYCLE)
     {
         return GPIO_PIN_SET;
     }

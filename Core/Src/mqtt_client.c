@@ -171,11 +171,23 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
                 setBlindDirection(&blinds[channel]);
                 publish_blinddir_stat(&blinds[channel]);
             }
+            else if(strncmp((const char*) data, payload_up, len) == 0)
+            {
+                blinds[channel].blinddirection = blinddirection_up;
+                setBlindDirection(&blinds[channel]);
+                publish_blinddir_stat(&blinds[channel]);
+            }
+            else if(strncmp((const char*) data, payload_down, len) == 0)
+            {
+                blinds[channel].blinddirection = blinddirection_down;
+                setBlindDirection(&blinds[channel]);
+                publish_blinddir_stat(&blinds[channel]);
+            }
             else
             {
                 uint8_t percent = 0;
-                char fmt_str[10] = "";
-                snprintf(fmt_str, 10, "%%%dPRIu8", len);
+                char fmt_str[16] = "";
+                snprintf(fmt_str, 16, "%%%dPRIu8", len);
                 if(sscanf((const char *)data, fmt_str, &percent)!=EOF)
                 {
                     blinds[channel].position_target = (double)blinds[channel].position_movingtimeup/(double)100*percent;

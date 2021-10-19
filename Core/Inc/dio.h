@@ -60,10 +60,10 @@ struct doubleswitch_s{
 	uint8_t channel;
 	uint16_t downInput_Pin;
 	GPIO_TypeDef * downInput_Port;
-    uint8_t downdebounce;
+	float downdebounce;
 	uint16_t upInput_Pin;
 	GPIO_TypeDef * upInput_Port;
-    uint8_t updebounce;
+    float updebounce;
 	inputdirection_t inputdirection;
 	bool changed;
 	TickType_t downInput_starttime; //ms
