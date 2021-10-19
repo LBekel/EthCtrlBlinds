@@ -108,13 +108,13 @@ struct ee_storage_s eeblindmovingtimeup = {
 
 uint32_t blindmovingtimedown[] = {120000,120000,120000,120000,120000,120000,120000,120000};
 struct ee_storage_s eeblindmovingtimedown = {
-        .VirtAddrStartNb = 13,
+        .VirtAddrStartNb = 29,
         .VirtWordCount = 16,
         .pData = (uint16_t*)&blindmovingtimedown};
 
 uint16_t currentthreshold  = 200;
 struct ee_storage_s eecurrentthreshold = {
-        .VirtAddrStartNb = 29,
+        .VirtAddrStartNb = 45,
         .VirtWordCount = 1,
         .pData = (uint16_t*)&eecurrentthreshold};
 
