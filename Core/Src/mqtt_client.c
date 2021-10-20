@@ -174,12 +174,14 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
             else if(strncmp((const char*) data, payload_up, len) == 0)
             {
                 blinds[channel].blinddirection = blinddirection_up;
+                blinds[channel].position_target = 0;
                 setBlindDirection(&blinds[channel]);
                 publish_blinddir_stat(&blinds[channel]);
             }
             else if(strncmp((const char*) data, payload_down, len) == 0)
             {
                 blinds[channel].blinddirection = blinddirection_down;
+                blinds[channel].position_target = blinds[channel].position_movingtimeup;
                 setBlindDirection(&blinds[channel]);
                 publish_blinddir_stat(&blinds[channel]);
             }
