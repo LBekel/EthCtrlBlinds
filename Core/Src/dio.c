@@ -45,7 +45,7 @@ IN13_GPIO_Port, IN14_GPIO_Port, IN15_GPIO_Port, IN16_GPIO_Port,
 IN17_GPIO_Port, IN18_GPIO_Port};
 
 
-#define maxmovingtime 240000//ms
+#define maxmovingtime 120000//ms
 #define minlearndelay 1000//ms
 int16_t blindcurrent_threshold = 200;//mA
 
@@ -504,52 +504,60 @@ void learnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
         switch(blind->blindlearn)
         {
             case blindlearn_start:
-                blind->position_movingtimeup = maxmovingtime; //set to max value to disable automatic off function
-                blind->position_actual = 0; //first move will go up, so set position to bottom
-                blind->position_target = maxmovingtime; //set to max value to disable automatic off function;
+                blind->position_movingtimeup = maxmovingtime; //max value
+                blind->position_movingtimedown = maxmovingtime; //max value
+                blind->position_actual = maxmovingtime; //first move will go up, so set position to bottom
+                blind->position_target = 0; //set to max value to disable automatic off function;
                 blind->blinddirection = blinddirection_up;
                 setBlindDirection(blind);
+                movingtime = blind->starttime; //store the time for minlearndelay function
                 blind->blindlearn = blindlearn_up1;
                 break;
             case blindlearn_up1:
                 if(blindcurrent < blindcurrent_threshold) //top position reached
                 {
-                    blind->position_actual = maxmovingtime; //next move will go down, so set position to top max
-                    blind->position_target = 0; //set to max value to disable automatic off function;
+                    blind->position_actual = 0; //next move will go down, so set position to top max
+                    blind->position_target = maxmovingtime; //set to max value to disable automatic off function;
                     blind->blinddirection = blinddirection_down;
                     setBlindDirection(blind);
-                    blind->blindlearn = blindlearn_down;
                     movingtime = blind->starttime; //store the time of start moving
+                    blind->blindlearn = blindlearn_down;
                 }
                 break;
             case blindlearn_down:
                 if(blindcurrent < blindcurrent_threshold) //bottom position reached
                 {
-                    movinguptime = xTaskGetTickCount() - movingtime; //store delta time
-                    printf("movinguptime: %ld\r\n", movinguptime);
-                    blind->position_actual = 0; //first move will go up, so set position to bottom
-                    blind->position_target = maxmovingtime; //set to max value to disable automatic off function;
-                    blind->blinddirection = blinddirection_up;
-                    setBlindDirection(blind);
+                    movingdowntime = xTaskGetTickCount() - movingtime; //store delta time
+                    printf("movingdowntime: %ld\r\n", movingdowntime);
+                    blind->position_movingtimedown = movingdowntime;
+
                     blindmovingtimedown[blind->channel-1] = blind->position_movingtimedown;
                     EE_WriteStorage(&eeblindmovingtimedown);
-                    blind->blindlearn = blindlearn_up2;
+
+                    blind->position_actual = maxmovingtime; //next move will go up, so set position to bottom
+                    blind->position_target = 0; //set to min value to disable automatic off function;
+                    blind->blinddirection = blinddirection_up;
+                    setBlindDirection(blind);
                     movingtime = blind->starttime; //store the time of start moving
+                    blind->blindlearn = blindlearn_up2;
                 }
                 break;
             case blindlearn_up2:
                 if(blindcurrent < blindcurrent_threshold) //top position reached
                 {
-                    movingdowntime = xTaskGetTickCount() - movingtime; //store delta time
-                    printf("movingdowntime: %ld\r\n", movingdowntime);
+                    movinguptime = xTaskGetTickCount() - movingtime; //store delta time
+                    printf("movinguptime: %ld\r\n", movinguptime);
                     blind->position_movingtimeup = movinguptime;
-                    blind->position_actual = blind->position_movingtimeup;
+
+                    blindmovingtimeup[blind->channel-1] = blind->position_movingtimeup;
+                    EE_WriteStorage(&eeblindmovingtimeup);
+
+                    blind->position_actual = 0;
                     blind->position_changed = true;
                     blind->blindlearn = blindlearn_finished;
                     blind->blinddirection = blinddirection_off;
                     setBlindDirection(blind);
-                    blindmovingtimeup[blind->channel-1] = blind->position_movingtimeup;
-                    EE_WriteStorage(&eeblindmovingtimeup);
+
                 }
             default:
                 break;
@@ -603,7 +611,7 @@ void StartScanInputTask(void *argument)
     /* Infinite loop */
     for(;;)
     {
-        for(int var = 0; var < num_doubleswitches - 1; ++var)
+        for(int var = 0; var < num_doubleswitches - 1; var++)
         {
             learnBlindMovingTime(&blinds[var], blindcurrent_avg);
             readDoubleswitch(&doubleswitches[var]);
@@ -615,12 +623,11 @@ void StartScanInputTask(void *argument)
         //doubleswitches[8].inputdirection = inputdirection_off;
         blindcurrent = getCurrentADC();
 
-        blindcurrent_avg = movingavg(blindcurrent);
         if(blinds[0].blinddirection == blinddirection_down)
         {
-            blindcurrent_avg -= 300;
+            blindcurrent -= 300;
         }
-
+        blindcurrent_avg = movingavg(blindcurrent);
         //printf("Current: %d\r\n",blindcurrent_avg);
         setMQTTCurrent(blindcurrent_avg);
         //osDelay(10);//100Hz
@@ -629,7 +636,7 @@ void StartScanInputTask(void *argument)
     }
 }
 
-#define DEBOUNCE_CYCLE (10.0f)
+#define DEBOUNCE_CYCLE (5.0f)
 
 GPIO_PinState GPIO_Read_Up_Debounced(struct doubleswitch_s *doubleswitch)
 {

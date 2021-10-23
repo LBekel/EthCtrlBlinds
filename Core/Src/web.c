@@ -260,13 +260,13 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     }
     if(iIndex == timeup)
     {
-        sprintf(myStr, "<input value=\"0\" name=\"timeup\" type=\"text\" id=\"timeup\" size=\"10\" maxlength=\"5\">");
+        sprintf(myStr, "<input value=\"0\" name=\"timeup\" type=\"text\" id=\"timeup\" size=\"10\" maxlength=\"6\">");
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }
     if(iIndex == timedo)
     {
-        sprintf(myStr, "<input value=\"0\" name=\"timedo\" type=\"text\" id=\"timedo\" size=\"10\" maxlength=\"5\">");
+        sprintf(myStr, "<input value=\"0\" name=\"timedo\" type=\"text\" id=\"timedo\" size=\"10\" maxlength=\"6\">");
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }

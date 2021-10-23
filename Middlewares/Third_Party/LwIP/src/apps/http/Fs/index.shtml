@@ -64,11 +64,11 @@
 				</select></td>
 			  </tr>
 			  <tr>
-				<td><label for="current">Movingtime up:</label></td>
+				<td><label for="timeup">Movingtime up:</label></td>
 				<td><!--#timeup--></td>
 			  </tr>
 			  <tr>
-				<td><label for="current">Movingtime down:</label></td>
+				<td><label for="timedo">Movingtime down:</label></td>
 				<td><!--#timedo--></td>
 			  </tr>
 			</table> 

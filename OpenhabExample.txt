@@ -1,0 +1,65 @@
+UID: mqtt:topic:MQTTBroker:BlindsControl1
+label: BlindCrtl1
+thingTypeUID: mqtt:topic
+configuration:
+  payloadNotAvailable: Offline
+  availabilityTopic: tele/BlindCrtl1/LWT
+  payloadAvailable: Online
+bridgeUID: mqtt:broker:MQTTBroker
+channels:
+  - id: blinddir01
+    channelTypeUID: mqtt:rollershutter
+    label: blinddir01
+    description: ""
+    configuration:
+      commandTopic: cmnd/BlindCrtl1/blinddir01
+      stateTopic: stat/BlindCrtl1/blindpos01
+  - id: blinddir02
+    channelTypeUID: mqtt:rollershutter
+    label: blinddir02
+    description: null
+    configuration:
+      commandTopic: cmnd/BlindCrtl1/blinddir02
+      stateTopic: stat/BlindCrtl1/blindpos02
+  - id: blinddir03
+    channelTypeUID: mqtt:rollershutter
+    label: blinddir03
+    description: null
+    configuration:
+      commandTopic: cmnd/BlindCrtl1/blinddir03
+      stateTopic: stat/BlindCrtl1/blindpos03
+  - id: blinddir04
+    channelTypeUID: mqtt:rollershutter
+    label: blinddir04
+    description: null
+    configuration:
+      commandTopic: cmnd/BlindCrtl1/blinddir04
+      stateTopic: stat/BlindCrtl1/blindpos04
+  - id: blinddir05
+    channelTypeUID: mqtt:rollershutter
+    label: blinddir05
+    description: null
+    configuration:
+      commandTopic: cmnd/BlindCrtl1/blinddir05
+      stateTopic: stat/BlindCrtl1/blindpos05
+  - id: blinddir06
+    channelTypeUID: mqtt:rollershutter
+    label: blinddir06
+    description: null
+    configuration:
+      commandTopic: cmnd/BlindCrtl1/blinddir06
+      stateTopic: stat/BlindCrtl1/blindpos06
+  - id: blinddir07
+    channelTypeUID: mqtt:rollershutter
+    label: blinddir07
+    description: null
+    configuration:
+      commandTopic: cmnd/BlindCrtl1/blinddir07
+      stateTopic: stat/BlindCrtl1/blindpos07
+  - id: blinddir08
+    channelTypeUID: mqtt:rollershutter
+    label: blinddir08
+    description: null
+    configuration:
+      commandTopic: cmnd/BlindCrtl1/blinddir08
+      stateTopic: stat/BlindCrtl1/blindpos08
