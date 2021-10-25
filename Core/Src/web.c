@@ -148,13 +148,13 @@ const char* MovetimeCGIhandler(int iIndex, int iNumParams, char *pcParam[], char
         {
             sscanf(pcValue[var], "%"PRIu32"", &blindmovingtimeup[channel]);
             EE_WriteStorage(&eeblindmovingtimeup);
-            setBlindsMovingTimeUp(&blindmovingtimeup[channel]);
+            setBlindsMovingTimeUp((uint32_t*) &blindmovingtimeup);
         }
         if(strcmp(pcParam[var], theSSItags[timedo]) == 0)
         {
             sscanf(pcValue[var], "%"PRIu32"", &blindmovingtimedown[channel]);
             EE_WriteStorage(&eeblindmovingtimedown);
-            setBlindsMovingTimeDown(&blindmovingtimedown[channel]);
+            setBlindsMovingTimeDown((uint32_t*) &blindmovingtimedown);
         }
         if(strncmp(pcParam[var], "blind", 5) == 0)
         {
