@@ -45,8 +45,12 @@ IN13_GPIO_Port, IN14_GPIO_Port, IN15_GPIO_Port, IN16_GPIO_Port,
 IN17_GPIO_Port, IN18_GPIO_Port};
 
 
-#define maxmovingtime 120000//ms
-#define minlearndelay 1000//ms
+#define MAXMOVINGTIME 120000//ms
+#define MINLEARNDELAY 1000//ms
+#define ENDMOVEDELAY 1500 //ms
+#define DEBOUNCE_CYCLE (5.0f)
+#define BLINDCURRENT_BUF_SIZE 10
+
 int16_t blindcurrent_threshold = 200;//mA
 
 /* Definition of ADCx conversions data table size */
@@ -202,7 +206,7 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch)
         {
             TickType_t timeelapsed;
             timeelapsed = xTaskGetTickCount() - doubleswitch->upInput_starttime;
-            if(timeelapsed > 2000) //button pressed 2sec
+            if(timeelapsed > ENDMOVEDELAY) //long button press
             {
                 doubleswitch->inputdirection = inputdirection_up_end;
                 doubleswitch->changed = true;
@@ -224,7 +228,7 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch)
         {
             TickType_t timeelapsed;
             timeelapsed = xTaskGetTickCount() - doubleswitch->downInput_starttime;
-            if(timeelapsed > 2000) //button pressed 2sec
+            if(timeelapsed > ENDMOVEDELAY) //long button press
             {
                 doubleswitch->inputdirection = inputdirection_down_end;
                 doubleswitch->changed = true;
@@ -259,6 +263,7 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch)
 
 void checkBlindPosition(uint8_t channel)
 {
+	float_t factor;
     switch(blinds[channel].blinddirection)
     {
         case blinddirection_angle_up:
@@ -292,6 +297,7 @@ void checkBlindPosition(uint8_t channel)
             }
             break;
         case blinddirection_up:
+        	//moving up is slower
             blinds[channel].position_actual -= xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms;
             blinds[channel].starttime = xTaskGetTickCount();
             blinds[channel].position_changed = true;
@@ -316,7 +322,13 @@ void checkBlindPosition(uint8_t channel)
             }
             break;
         case blinddirection_down:
-            blinds[channel].position_actual += xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
+        	//moving down is faster, so add a factor to the real time
+            blinds[channel].position_actual += xTaskGetTickCount() - blinds[channel].starttime; //add the time past since last check
+
+//            factor = (float)(blinds[channel].position_movingtimeup)/(float)(blinds[channel].position_movingtimedown);
+//            int32_t decPosition = (xTaskGetTickCount() - blinds[channel].starttime) * factor;
+//            blinds[channel].position_actual += decPosition;
+
             blinds[channel].starttime = xTaskGetTickCount();
             blinds[channel].position_changed = true;
             if(blinds[channel].position_actual >= blinds[channel].position_target)
@@ -499,25 +511,25 @@ void learnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
     static TickType_t movingtime = 0;
     static TickType_t movinguptime = 0;
     static TickType_t movingdowntime = 0;
-    if(movingtime + minlearndelay < xTaskGetTickCount())
+    if(movingtime + MINLEARNDELAY < xTaskGetTickCount())
     {
         switch(blind->blindlearn)
         {
             case blindlearn_start:
-                blind->position_movingtimeup = maxmovingtime; //max value
-                blind->position_movingtimedown = maxmovingtime; //max value
-                blind->position_actual = maxmovingtime; //first move will go up, so set position to bottom
+                blind->position_movingtimeup = MAXMOVINGTIME; //max value
+                blind->position_movingtimedown = MAXMOVINGTIME; //max value
+                blind->position_actual = MAXMOVINGTIME; //first move will go up, so set position to bottom
                 blind->position_target = 0; //set to max value to disable automatic off function;
                 blind->blinddirection = blinddirection_up;
                 setBlindDirection(blind);
-                movingtime = blind->starttime; //store the time for minlearndelay function
+                movingtime = blind->starttime; //store the time for MINLEARNDELAY function
                 blind->blindlearn = blindlearn_up1;
                 break;
             case blindlearn_up1:
                 if(blindcurrent < blindcurrent_threshold) //top position reached
                 {
                     blind->position_actual = 0; //next move will go down, so set position to top max
-                    blind->position_target = maxmovingtime; //set to max value to disable automatic off function;
+                    blind->position_target = MAXMOVINGTIME; //set to max value to disable automatic off function;
                     blind->blinddirection = blinddirection_down;
                     setBlindDirection(blind);
                     movingtime = blind->starttime; //store the time of start moving
@@ -534,7 +546,7 @@ void learnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
                     blindmovingtimedown[blind->channel-1] = blind->position_movingtimedown;
                     EE_WriteStorage(&eeblindmovingtimedown);
 
-                    blind->position_actual = maxmovingtime; //next move will go up, so set position to bottom
+                    blind->position_actual = MAXMOVINGTIME; //next move will go up, so set position to bottom
                     blind->position_target = 0; //set to min value to disable automatic off function;
                     blind->blinddirection = blinddirection_up;
                     setBlindDirection(blind);
@@ -564,7 +576,7 @@ void learnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
         }
     }
 }
-#define BLINDCURRENT_BUF_SIZE 50
+
 int16_t movingavg(int16_t blindcurrent)
 {
     static uint8_t i = 0;
@@ -620,23 +632,21 @@ void StartScanInputTask(void *argument)
         }
         readDoubleswitch(&doubleswitches[8]);
         publishCentralDoubleswitchTopic();
-        //doubleswitches[8].inputdirection = inputdirection_off;
-        blindcurrent = getCurrentADC();
 
+        blindcurrent = getCurrentADC();
         if(blinds[0].blinddirection == blinddirection_down)
         {
             blindcurrent -= 300;
         }
         blindcurrent_avg = movingavg(blindcurrent);
-        //printf("Current: %d\r\n",blindcurrent_avg);
         setMQTTCurrent(blindcurrent_avg);
-        //osDelay(10);//100Hz
+
         osDelayUntil(xTicks+10);//100Hz
         xTicks = xTaskGetTickCount();
     }
 }
 
-#define DEBOUNCE_CYCLE (5.0f)
+
 
 GPIO_PinState GPIO_Read_Up_Debounced(struct doubleswitch_s *doubleswitch)
 {
