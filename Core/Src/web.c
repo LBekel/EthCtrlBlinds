@@ -18,6 +18,7 @@ const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pc
 const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* MovetimeCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen);
 
 // in our HTML file <form method="get" action="/relay.cgi">
@@ -26,13 +27,14 @@ const tCGI MqttCGI = {"/mqtt.cgi", MqttCGIhandler};
 const tCGI LearnCGI = {"/learn.cgi", LearnCGIhandler};
 const tCGI MovetimeCGI = {"/movtime.cgi", MovetimeCGIhandler};
 const tCGI BootloaderCGI = {"/bootloader.cgi", BootloaderCGIhandler};
+const tCGI PositionCGI = {"/position.cgi", PositionCGIhandler};
 struct ee_storage_s eemqtttopic;
 extern struct ee_storage_s eemqtthost;
 
-#define theCGItableSize 5
+#define theCGItableSize 6
 tCGI theCGItable[theCGItableSize];
 
-#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(current)C(timeup)C(timeup1)C(timeup2)C(timeup3)C(timeup4)C(timeup5)C(timeup6)C(timeup7)C(timeup8)C(timedo)C(timedo1)C(timedo2)C(timedo3)C(timedo4)C(timedo5)C(timedo6)C(timedo7)C(timedo8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)C(compiled)
+#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(current)C(timeup)C(timeup1)C(timeup2)C(timeup3)C(timeup4)C(timeup5)C(timeup6)C(timeup7)C(timeup8)C(timedo)C(timedo1)C(timedo2)C(timedo3)C(timedo4)C(timedo5)C(timedo6)C(timedo7)C(timedo8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)C(compiled)C(per50_1)C(per50_2)C(per50_3)C(per50_4)C(per50_5)C(per50_6)C(per50_7)C(per50_8)C(per50)
 #define C(x) x,
 enum eSSItags { SSITAGS numSSItags };
 #undef C
@@ -48,6 +50,7 @@ void myCGIinit(void)
     theCGItable[2] = LearnCGI;
     theCGItable[3] = MovetimeCGI;
     theCGItable[4] = BootloaderCGI;
+    theCGItable[5] = PositionCGI;
     //give the table to the HTTP server
     http_set_cgi_handlers(theCGItable, theCGItableSize);
 }
@@ -68,12 +71,12 @@ const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
             if(strcmp(pcValue[var], "up") == 0)
             {
                 blinds[var].blinddirection = blinddirection_up;
-                blinds[var].position_target = 0;
+                blinds[var].position_target = 0 - 1000;
             }
             else if(strcmp(pcValue[var], "down") == 0)
             {
                 blinds[var].blinddirection = blinddirection_down;
-                blinds[var].position_target = blinds[var].position_movingtimeup;
+                blinds[var].position_target = blinds[var].position_movingtimeup + 1000;
 
             }
             else
@@ -173,6 +176,30 @@ const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], ch
     return "/startapp.html";
 }
 
+
+const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+{
+    static uint8_t channel = 0;
+    uint8_t value = 0;
+    for(uint8_t var = 0; var < iNumParams; var++)
+    {
+        if(strcmp(pcParam[var], theSSItags[per50]) == 0)
+        {
+
+            sscanf(pcValue[var], "%2"PRIu8"", &value);
+            blindpos50[channel] = value;
+            EE_WriteStorage(&eeblindpos50);
+            setBlindsPos50((uint8_t*)&blindpos50);
+        }
+        if(strncmp(pcParam[var], "blind", 5) == 0)
+        {
+            sscanf(pcValue[var], "%1"PRIu8"", &channel);
+            channel--;
+        }
+    }
+    return "/return.html";
+}
+
 // the actual function for SSI
 uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
 {
@@ -225,6 +252,18 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     if((iIndex >= timedo1) && (iIndex <= timedo8))
     {
         sprintf(myStr, "%ldms", blindmovingtimedown[iIndex - timedo1]);
+        strcpy(pcInsert, myStr);
+        return strlen(myStr);
+    }
+    if((iIndex >= per50_1) && (iIndex <= per50_8))
+    {
+        sprintf(myStr, "%d", blindpos50[iIndex - per50_1]);
+        strcpy(pcInsert, myStr);
+        return strlen(myStr);
+    }
+    if(iIndex == per50)
+    {
+        sprintf(myStr, "<input value=\"0\" name=\"per50\" type=\"text\" id=\"per50\" size=\"10\" maxlength=\"2\">");
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }

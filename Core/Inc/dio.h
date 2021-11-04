@@ -46,6 +46,7 @@ struct blind_s{
 	TickType_t position_movingtimedown; //ms
 	TickType_t starttime; //ms
 	blindlearn_t blindlearn;
+	uint8_t position_50; //50percent position
 };
 
 typedef enum {
@@ -118,6 +119,7 @@ GPIO_TypeDef * Input_Ports[num_input_ch];
 void initBlinds(void);
 void setBlindsMovingTimeUp(uint32_t * blindsmovingtime);
 void setBlindsMovingTimeDown(uint32_t *blindsmovingtime);
+void setBlindsPos50(uint8_t *blindspos50);
 void setBlindDirection(struct blind_s *blind);
 void initDoubleswitches(void);
 void readDoubleswitches(void);
@@ -125,5 +127,7 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch);
 void setBlindcurrentThreshold(int16_t value);
 uint16_t getBlindcurrentThreshold(void);
 void StartScanInputsTask(void *argument);
+uint8_t calc_real_position(struct blind_s *blind);
+void calc_position(uint8_t percent, struct blind_s *blind);
 
 #endif /* INC_DIO_H_ */

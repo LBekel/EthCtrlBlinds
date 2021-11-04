@@ -118,6 +118,12 @@ struct ee_storage_s eecurrentthreshold = {
         .VirtWordCount = 1,
         .pData = (uint16_t*)&eecurrentthreshold};
 
+uint8_t blindpos50[] = {50,50,50,50,50,50,50,50};
+struct ee_storage_s eeblindpos50 = {
+        .VirtAddrStartNb = 46,
+        .VirtWordCount = 4,
+        .pData = (uint16_t*)&blindpos50};
+
 uint16_t VirtAddVarTab[28];
 /* USER CODE END PV */
 
@@ -235,6 +241,12 @@ int main(void)
             EE_WriteStorage(&eecurrentthreshold); //Write default to flash
         }
         setBlindcurrentThreshold(currentthreshold);
+
+        if(EE_ReadStorage(&eeblindpos50))
+        {
+            EE_WriteStorage(&eeblindpos50); //Write default to flash
+        }
+        setBlindsPos50((uint8_t*) eeblindpos50.pData);
     }
     else
     {

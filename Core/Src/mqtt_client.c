@@ -174,14 +174,14 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
             else if(strncmp((const char*) data, payload_up, len) == 0)
             {
                 blinds[channel].blinddirection = blinddirection_up;
-                blinds[channel].position_target = 0;
+                blinds[channel].position_target = 0 - 1000;
                 setBlindDirection(&blinds[channel]);
                 publish_blinddir_stat(&blinds[channel]);
             }
             else if(strncmp((const char*) data, payload_down, len) == 0)
             {
                 blinds[channel].blinddirection = blinddirection_down;
-                blinds[channel].position_target = blinds[channel].position_movingtimeup;
+                blinds[channel].position_target = blinds[channel].position_movingtimeup + 1000;
                 setBlindDirection(&blinds[channel]);
                 publish_blinddir_stat(&blinds[channel]);
             }
@@ -192,7 +192,22 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
                 snprintf(fmt_str, 16, "%%%dPRIu8", len);
                 if(sscanf((const char *)data, fmt_str, &percent)!=EOF)
                 {
-                    blinds[channel].position_target = (double)blinds[channel].position_movingtimeup/(double)100*percent;
+
+                	if(percent>=100)
+                	{
+                		blinds[channel].position_target = blinds[channel].position_movingtimeup + 1000;
+                	}
+                	else if(percent<=0)
+                	{
+                		blinds[channel].position_target = 0 - 1000;
+                	}
+                	else
+                	{
+                	    calc_position(percent,&blinds[channel]);
+                		//blinds[channel].position_target = (double)blinds[channel].position_movingtimeup/(double)100*percent;
+                	}
+
+
                     if(blinds[channel].position_actual > blinds[channel].position_target)
                     {
                         blinds[channel].blinddirection = blinddirection_up;
@@ -339,8 +354,17 @@ void publish_blindpos_stat(struct blind_s *blind)
             char topic[sizeof(mqttname) + 19];
             sprintf(topic, BLINDPOSSTAT"%02d", mqttname, blind->channel); //build Topic
             char payload[6];
-            double percent = round((double) 100.0 / blind->position_movingtimeup * blind->position_actual);
-            sprintf(payload, "%d", (uint8_t) percent);
+//            double percent;
+//            percent = round((double) 100.0 / blind->position_movingtimeup * blind->position_actual);
+//        	if(percent>=100)
+//        	{
+//        		percent = 100;
+//        	}
+//        	else if(percent<=0)
+//        	{
+//        		percent = 0;
+//        	}
+            sprintf(payload, "%d", (uint8_t) calc_real_position(blind));
             err = mqtt_publish(&client, topic, payload, strlen(payload), qos, retain, mqtt_pub_request_cb, NULL);
 
             if(err != ERR_OK)

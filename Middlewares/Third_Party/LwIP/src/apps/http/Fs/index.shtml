@@ -48,6 +48,29 @@
 			<input value="Learn" type="submit">
 		</form>
 		<br><br>
+		<form method="get" action="/position.cgi">
+			<table>
+			  <tr>
+				<td><label for="blind">Blind to set:</label></td>
+				<td><select name="blind" id="blind">
+				  <option value="1">1</option>
+				  <option value="2">2</option>
+				  <option value="3">3</option>
+				  <option value="4">4</option>
+				  <option value="5">5</option>
+				  <option value="6">6</option>
+				  <option value="7">7</option>
+				  <option value="8">8</option>
+				</select></td>
+			  </tr>
+			  <tr>
+				<td><label for="position">50% Position:</label></td>
+				<td><!--#per50--></td>
+			  </tr>
+			</table> 
+			<input value="Set 50 Postion" type="submit">
+		</form>
+		<br><br>
 		<form method="get" action="/movtime.cgi">
 			<table>
 			  <tr>
@@ -82,6 +105,7 @@
 				<th>Direction</th>
 				<th>Movingtime up</th>
 				<th>Movingtime down</th>
+				<th>50%</th>
 				<th>Position</th>
 			  </tr>
 			  <tr>
@@ -89,6 +113,7 @@
 				<td><!--#blind1--></td>
 				<td><!--#timeup1--></td>
 				<td><!--#timedo1--></td>
+				<td><!--#per50_1--></td>
 				<td><!--#pos1--></td>
 			  </tr>
 			  <tr>
@@ -96,6 +121,7 @@
 				<td><!--#blind2--></td>
 				<td><!--#timeup2--></td>
 				<td><!--#timedo2--></td>
+				<td><!--#per50_2--></td>
 				<td><!--#pos2--></td>
 			  </tr>
 			  <tr>
@@ -103,6 +129,7 @@
 				<td><!--#blind3--></td>
 				<td><!--#timeup3--></td>
 				<td><!--#timedo3--></td>
+				<td><!--#per50_3--></td>
 				<td><!--#pos3--></td>
 			  </tr>
 			  <tr>
@@ -110,6 +137,7 @@
 				<td><!--#blind4--></td>
 				<td><!--#timeup4--></td>
 				<td><!--#timedo4--></td>
+				<td><!--#per50_4--></td>
 				<td><!--#pos4--></td>
 			  </tr>
 			  <tr>
@@ -117,6 +145,7 @@
 				<td><!--#blind5--></td>
 				<td><!--#timeup5--></td>
 				<td><!--#timedo5--></td>
+				<td><!--#per50_5--></td>
 				<td><!--#pos5--></td>
 			  </tr>
 			  <tr>
@@ -124,6 +153,7 @@
 				<td><!--#blind6--></td>
 				<td><!--#timeup6--></td>
 				<td><!--#timedo6--></td>
+				<td><!--#per50_6--></td>
 				<td><!--#pos6--></td>
 			  </tr>
 			  <tr>
@@ -131,6 +161,7 @@
 				<td><!--#blind7--></td>
 				<td><!--#timeup7--></td>
 				<td><!--#timedo7--></td>
+				<td><!--#per50_7--></td>
 				<td><!--#pos7--></td>
 			  </tr>
 			  <tr>
@@ -138,6 +169,7 @@
 				<td><!--#blind8--></td>
 				<td><!--#timeup8--></td>
 				<td><!--#timedo8--></td>
+				<td><!--#per50_8--></td>
 				<td><!--#pos8--></td>
 			  </tr>
 			</table>
