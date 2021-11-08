@@ -124,6 +124,18 @@ struct ee_storage_s eeblindpos50 = {
         .VirtWordCount = 4,
         .pData = (uint16_t*)&blindpos50};
 
+bool raffstore[] = {false,false,false,false,false,false,false,false};
+struct ee_storage_s eeraffstore = {
+        .VirtAddrStartNb = 50,
+        .VirtWordCount = 1,
+        .pData = (uint16_t*)&raffstore};
+
+uint16_t raffmovingtime[] = {1000,1000,1000,1000,1000,1000,1000,1000};
+struct ee_storage_s eeraffmovingtime = {
+        .VirtAddrStartNb = 51,
+        .VirtWordCount = 8,
+        .pData = (uint16_t*)&raffmovingtime};
+
 uint16_t VirtAddVarTab[28];
 /* USER CODE END PV */
 
@@ -247,6 +259,18 @@ int main(void)
             EE_WriteStorage(&eeblindpos50); //Write default to flash
         }
         setBlindsPos50((uint8_t*) eeblindpos50.pData);
+
+        if(EE_ReadStorage(&eeraffstore))
+        {
+            EE_WriteStorage(&eeraffstore); //Write default to flash
+        }
+        setRaffstore((bool*) eeraffstore.pData);
+
+        if(EE_ReadStorage(&eeraffmovingtime))
+        {
+            EE_WriteStorage(&eeraffmovingtime); //Write default to flash
+        }
+        setRaffstoreMovingtime((uint16_t*) eeraffmovingtime.pData);
     }
     else
     {

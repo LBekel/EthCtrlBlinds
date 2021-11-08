@@ -33,6 +33,7 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "eeprom.h"
+#include "stdbool.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -43,10 +44,14 @@ extern struct ee_storage_s eeblindmovingtimeup;
 extern struct ee_storage_s eeblindmovingtimedown;
 extern struct ee_storage_s eecurrentthreshold;
 extern struct ee_storage_s eeblindpos50;
+extern struct ee_storage_s eeraffstore;
+extern struct ee_storage_s eeraffmovingtime;
 extern uint32_t blindmovingtimeup[];
 extern uint32_t blindmovingtimedown[];
 extern uint16_t currentthreshold;
 extern uint8_t blindpos50[];
+extern bool raffstore[];
+extern uint16_t raffmovingtime[];
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

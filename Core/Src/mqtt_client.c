@@ -175,6 +175,7 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
             {
                 blinds[channel].blinddirection = blinddirection_up;
                 blinds[channel].position_target = 0 - 1000;
+                blinds[channel].angle_target = 0;
                 setBlindDirection(&blinds[channel]);
                 publish_blinddir_stat(&blinds[channel]);
             }
@@ -182,6 +183,7 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
             {
                 blinds[channel].blinddirection = blinddirection_down;
                 blinds[channel].position_target = blinds[channel].position_movingtimeup + 1000;
+                blinds[channel].angle_target = blinds[channel].angle_movingtime;
                 setBlindDirection(&blinds[channel]);
                 publish_blinddir_stat(&blinds[channel]);
             }
@@ -204,17 +206,18 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
                 	else
                 	{
                 	    calc_position(percent,&blinds[channel]);
-                		//blinds[channel].position_target = (double)blinds[channel].position_movingtimeup/(double)100*percent;
                 	}
 
 
                     if(blinds[channel].position_actual > blinds[channel].position_target)
                     {
                         blinds[channel].blinddirection = blinddirection_up;
+                        blinds[channel].angle_target = 0;
                     }
                     else
                     {
                         blinds[channel].blinddirection = blinddirection_down;
+                        blinds[channel].angle_target = blinds[channel].angle_movingtime;
                     }
                     setBlindDirection(&blinds[channel]);
                     publish_blinddir_stat(&blinds[channel]);
@@ -226,17 +229,33 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 
             uint8_t percent = 0;
             sscanf((const char *)data, "%"PRIu8"", &percent);
+            if(percent>=100)
+            {
+                percent = 100;
+            }
+            else if(percent<=0)
+            {
+                percent = 0;
+            }
             //printf("Blindposition channel %d: %d%%\r\n",channel,percent);
             blinds[channel].angle_target = (double)blinds[channel].angle_movingtime/(double)100*percent;
-            if(blinds[channel].angle_actual < blinds[channel].angle_target)
+            //start only moving if blinds are stopped
+            if(blinds[channel].blinddirection == blinddirection_off)
             {
-                blinds[channel].blinddirection = blinddirection_angle_up;
+                if(blinds[channel].angle_actual < blinds[channel].angle_target)
+                {
+                    blinds[channel].blinddirection = blinddirection_angle_down;
+                }
+                else if(blinds[channel].angle_actual > blinds[channel].angle_target)
+                {
+                    blinds[channel].blinddirection = blinddirection_angle_up;
+                }
+                else
+                {
+                    blinds[channel].blinddirection = blinddirection_off;
+                }
+                setBlindDirection(&blinds[channel]);
             }
-            else
-            {
-                blinds[channel].blinddirection = blinddirection_angle_down;
-            }
-            setBlindDirection(&blinds[channel]);
         }
         else
         {
@@ -380,7 +399,7 @@ void publish_blindangle_stats(void)
     {
         for(uint8_t var = 0; var < num_blinds; ++var)
         {
-            publish_blindpos_stat(&blinds[var]);
+            publish_blindangle_stat(&blinds[var]);
         }
     }
 }

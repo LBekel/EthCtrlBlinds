@@ -120,6 +120,8 @@ void initBlinds(void);
 void setBlindsMovingTimeUp(uint32_t * blindsmovingtime);
 void setBlindsMovingTimeDown(uint32_t *blindsmovingtime);
 void setBlindsPos50(uint8_t *blindspos50);
+void setRaffstore(bool *raffstore);
+void setRaffstoreMovingtime(uint16_t *raffmovingtime);
 void setBlindDirection(struct blind_s *blind);
 void initDoubleswitches(void);
 void readDoubleswitches(void);
