@@ -472,8 +472,8 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                         if(blinds[blindchannel].blinddirection != blinddirection_up) //if not set do it now
                         {
                             blinds[blindchannel].blinddirection = blinddirection_up;
-                            blinds[blindchannel].position_target = 0;// - 1000;
-                            blinds[blindchannel].angle_target = angletime;
+                            blinds[blindchannel].position_target = 0 - 1000;
+                            blinds[blindchannel].angle_target = 0;
                             setBlindDirection(&blinds[blindchannel]);
                             publish_blinddir_stat(&blinds[blindchannel]);
                         }
@@ -482,8 +482,8 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                         if(blinds[blindchannel].blinddirection != blinddirection_down) //if not set do it now
                         {
                             blinds[blindchannel].blinddirection = blinddirection_down;
-                            blinds[blindchannel].position_target = blinds[blindchannel].position_movingtimeup;// + 1000;
-                            blinds[blindchannel].angle_target = angletime;
+                            blinds[blindchannel].position_target = blinds[blindchannel].position_movingtimeup + 1000;
+                            blinds[blindchannel].angle_target = blinds[blindchannel].angle_movingtime;
                             setBlindDirection(&blinds[blindchannel]);
                             publish_blinddir_stat(&blinds[blindchannel]);
                         }
