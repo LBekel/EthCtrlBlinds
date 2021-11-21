@@ -81,6 +81,8 @@
 #define MEMP_NUM_SYS_TIMEOUT 12
 /*----- Default Value for PBUF_POOL_SIZE: 16 ---*/
 #define PBUF_POOL_SIZE 64
+/*----- Default Value for PBUF_POOL_BUFSIZE: 592 ---*/
+#define PBUF_POOL_BUFSIZE 2048
 /*----- Value in opt.h for LWIP_ETHERNET: LWIP_ARP || PPPOE_SUPPORT -*/
 #define LWIP_ETHERNET 1
 /*----- Default Value for LWIP_MULTICAST_PING: 0 ---*/
@@ -93,10 +95,10 @@
 #define LWIP_DHCP_AUTOIP_COOP_TRIES 1
 /*----- Value in opt.h for LWIP_DNS_SECURE: (LWIP_DNS_SECURE_RAND_XID | LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING | LWIP_DNS_SECURE_RAND_SRC_PORT) -*/
 #define LWIP_DNS_SECURE 7
-/*----- Value in opt.h for TCP_SND_QUEUELEN: (4*TCP_SND_BUF + (TCP_MSS - 1))/TCP_MSS -----*/
+/*----- Default Value for TCP_SND_BUF: 1072 ---*/
+#define TCP_SND_BUF 2048
+/*----- Default Value for TCP_SND_QUEUELEN: 16 ---*/
 #define TCP_SND_QUEUELEN 9
-/*----- Value in opt.h for TCP_SNDLOWAT: LWIP_MIN(LWIP_MAX(((TCP_SND_BUF)/2), (2 * TCP_MSS) + 1), (TCP_SND_BUF) - 1) -*/
-#define TCP_SNDLOWAT 1071
 /*----- Value in opt.h for TCP_SNDQUEUELOWAT: LWIP_MAX(TCP_SND_QUEUELEN)/2, 5) -*/
 #define TCP_SNDQUEUELOWAT 5
 /*----- Value in opt.h for TCP_WND_UPDATE_THRESHOLD: LWIP_MIN(TCP_WND/4, TCP_MSS*4) -----*/
@@ -142,11 +144,15 @@
 /*----- Default Value for LWIP_HTTPD_SSI: 0 ---*/
 #define LWIP_HTTPD_SSI 1
 /*----- Default Value for LWIP_HTTPD_MAX_CGI_PARAMETERS: 16 ---*/
-#define LWIP_HTTPD_MAX_CGI_PARAMETERS 33
+#define LWIP_HTTPD_MAX_CGI_PARAMETERS 40
 /*----- Default Value for LWIP_HTTPD_MAX_TAG_NAME_LEN: 8 ---*/
 #define LWIP_HTTPD_MAX_TAG_NAME_LEN 10
+/*----- Default Value for LWIP_HTTPD_MAX_TAG_INSERT_LEN: 192 ---*/
+#define LWIP_HTTPD_MAX_TAG_INSERT_LEN 800
 /*----- Default Value for LWIP_HTTPD_DYNAMIC_HEADERS: 0 ---*/
 #define LWIP_HTTPD_DYNAMIC_HEADERS 1
+/*----- Default Value for LWIP_HTTPD_REQ_BUFSIZE: 1023 ---*/
+#define LWIP_HTTPD_REQ_BUFSIZE 2048
 /*----- Default Value for LWIP_HTTPD_ABORT_ON_CLOSE_MEM_ERROR: 0 ---*/
 #define LWIP_HTTPD_ABORT_ON_CLOSE_MEM_ERROR 1
 /*----- Default Value for LWIP_HTTPD_KILL_OLD_ON_CONNECTIONS_EXCEEDED: 0 ---*/

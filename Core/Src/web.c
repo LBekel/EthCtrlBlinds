@@ -13,28 +13,40 @@
 #include <stdbool.h>
 #include "dio.h"
 
-const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+const char* BlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+const char* InputCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen);
 
-// in our HTML file <form method="get" action="/relay.cgi">
-const tCGI RelayCGI = {"/relay.cgi", RelayCGIhandler};
+const tCGI BlindsCGI = {"/blinds.cgi", BlindsCGIhandler};
 const tCGI MqttCGI = {"/mqtt.cgi", MqttCGIhandler};
 const tCGI LearnCGI = {"/learn.cgi", LearnCGIhandler};
 const tCGI SettingCGI = {"/setting.cgi", SettingCGIhandler};
 const tCGI BootloaderCGI = {"/bootloader.cgi", BootloaderCGIhandler};
 const tCGI PositionCGI = {"/position.cgi", PositionCGIhandler};
+const tCGI InputCGI = {"/swmatrix.cgi", InputCGIhandler};
+
 struct ee_storage_s eemqtttopic;
 extern struct ee_storage_s eemqtthost;
 
-#define theCGItableSize 6
+#define theCGItableSize 7
 tCGI theCGItable[theCGItableSize];
 
-#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)C(mqtttopic)C(mqtthost)C(current)C(timeup1)C(timeup2)C(timeup3)C(timeup4)C(timeup5)C(timeup6)C(timeup7)C(timeup8)C(timedo1)C(timedo2)C(timedo3)C(timedo4)C(timedo5)C(timedo6)C(timedo7)C(timedo8)C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)C(compiled)C(per50_1)C(per50_2)C(per50_3)C(per50_4)C(per50_5)C(per50_6)C(per50_7)C(per50_8)C(raff1)C(raff2)C(raff3)C(raff4)C(raff5)C(raff6)C(raff7)C(raff8)C(rafftim1)C(rafftim2)C(rafftim3)C(rafftim4)C(rafftim5)C(rafftim6)C(rafftim7)C(rafftim8)C(angle1)C(angle2)C(angle3)C(angle4)C(angle5)C(angle6)C(angle7)C(angle8)
+#define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)\
+                C(mqtttopic)C(mqtthost)C(current)\
+                C(timeup1)C(timeup2)C(timeup3)C(timeup4)C(timeup5)C(timeup6)C(timeup7)C(timeup8)\
+                C(timedo1)C(timedo2)C(timedo3)C(timedo4)C(timedo5)C(timedo6)C(timedo7)C(timedo8)\
+                C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)\
+                C(compiled)\
+                C(per50_1)C(per50_2)C(per50_3)C(per50_4)C(per50_5)C(per50_6)C(per50_7)C(per50_8)\
+                C(raff1)C(raff2)C(raff3)C(raff4)C(raff5)C(raff6)C(raff7)C(raff8)\
+                C(rafftim1)C(rafftim2)C(rafftim3)C(rafftim4)C(rafftim5)C(rafftim6)C(rafftim7)C(rafftim8)\
+                C(angle1)C(angle2)C(angle3)C(angle4)C(angle5)C(angle6)C(angle7)C(angle8)\
+                C(input1)C(input2)C(input3)C(input4)C(input5)C(input6)C(input7)C(input8)
 #define C(x) x,
 enum eSSItags { SSITAGS numSSItags };
 #undef C
@@ -45,12 +57,13 @@ const char *const theSSItags[] = { SSITAGS };
 // function to initialize CGI
 void myCGIinit(void)
 {
-    theCGItable[0] = RelayCGI;
+    theCGItable[0] = BlindsCGI;
     theCGItable[1] = MqttCGI;
     theCGItable[2] = LearnCGI;
     theCGItable[3] = SettingCGI;
     theCGItable[4] = BootloaderCGI;
     theCGItable[5] = PositionCGI;
+    theCGItable[6] = InputCGI;
     //give the table to the HTTP server
     http_set_cgi_handlers(theCGItable, theCGItableSize);
 }
@@ -62,7 +75,7 @@ void mySSIinit(void)
 }
 
 // the actual function for handling CGI
-const char* RelayCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+const char* BlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
     for(uint8_t var = 0; var < iNumParams; var++)
     {
@@ -111,6 +124,7 @@ const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pc
             sprintf((char*) eemqtttopic.pData, pcValue[var]);
             EE_WriteStorage(&eemqtttopic);
             setMQTTTopic((char*) pcValue[var]);
+            netif_set_hostname(&gnetif,pcValue[var]);
         }
         if(strcmp(pcParam[var], theSSItags[mqtthost]) == 0)
         {
@@ -200,6 +214,7 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
             sscanf(pcParam[var]+4, "%"PRIu8"", &channel);
             channel--;
             raffstoretemp[channel] = true;
+
         }
 
         if(strncmp(pcParam[var], theSSItags[rafftim1], 7) == 0)
@@ -217,15 +232,22 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
         }
     }
 
-    for (uint8_t channel = 0; channel < num_blinds; channel++)
+    bool changed = false;
+    for(uint8_t channel = 0; channel < num_blinds; channel++)
     {
-        if (raffstoretemp[channel]!=raffstore[channel])
+        if(raffstoretemp[channel] != raffstore[channel])
         {
             raffstore[channel] = raffstoretemp[channel];
-            EE_WriteStorage(&eeraffstore);
-            setRaffstore((bool*)&raffstore);
+            changed = true;
         }
     }
+    if(changed)
+    {
+        EE_WriteStorage(&eeraffstore);
+        setRaffstore((bool*) &raffstore);
+    }
+
+
 
 
     return "/return.html";
@@ -248,7 +270,8 @@ const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char
     {
         if(strncmp(pcParam[var], theSSItags[per50_1],5) == 0)
         {
-
+            sscanf(pcParam[var]+6, "%"PRIu8"", &channel);
+            channel--;
             sscanf(pcValue[var], "%2"PRIu8"", &value);
             blindpos50[channel] = value;
             EE_WriteStorage(&eeblindpos50);
@@ -260,6 +283,32 @@ const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char
             channel--;
         }
     }
+    return "/return.html";
+}
+
+const char* InputCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+{
+    uint8_t input = 0;
+    uint8_t blind = 0;
+    uint16_t temp_blindinput = 0;
+
+    sscanf(pcParam[0]+7, "%"PRIu8"", &blind);
+    blind--;
+
+    for(uint8_t var = 0; var < iNumParams; var++)
+    {
+        if(strncmp(pcParam[var], theSSItags[input1],5) == 0)
+        {
+            sscanf(pcParam[var]+5, "%"PRIu8"", &input);
+            input--;
+
+            temp_blindinput += 1<<input;
+        }
+    }
+    blindinputmatrix[blind] = temp_blindinput;
+    setBlindInputMatrix((uint16_t*)&blindinputmatrix);
+    EE_WriteStorage(&eeblindinputmatrix);
+
     return "/return.html";
 }
 
@@ -386,6 +435,30 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     if(iIndex == compiled)
     {
         sprintf(myStr, __DATE__ " " __TIME__);
+        strcpy(pcInsert, myStr);
+        return strlen(myStr);
+    }
+    if((iIndex >= input1) && (iIndex <= input8))
+    {
+        uint8_t blind = iIndex - input1 + 1;
+        char checked[8];
+        char name[10];
+        int16_t position = 0;
+
+        for (uint8_t input = 0; input < 9; input++)
+        {
+            //printf("Checked %d\r\n",(blindinputmatrix[blind-1]>>input)&1);
+            if((blindinputmatrix[blind-1]>>input)&1)
+            {
+                sprintf(checked,"checked");
+            }
+            else
+            {
+                sprintf(checked," ");
+            }
+            sprintf(name,"input%d_%d,",input+1,blind);
+            position += sprintf(myStr+position, "<td><input name=\"%s\"type=\"checkbox\" id=\"%s\" %s/></td>",name,name,checked);
+        }
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }

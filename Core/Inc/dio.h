@@ -47,6 +47,7 @@ struct blind_s{
 	TickType_t starttime; //ms
 	blindlearn_t blindlearn;
 	uint8_t position_50; //50percent position
+	uint16_t inputmatrix; //bitmask
 };
 
 typedef enum {
@@ -54,7 +55,8 @@ typedef enum {
 	inputdirection_up,
 	inputdirection_down,
 	inputdirection_up_end,
-	inputdirection_down_end
+	inputdirection_down_end,
+	inputdirection_down_end_angle
 }inputdirection_t;
 
 struct doubleswitch_s{
@@ -67,6 +69,7 @@ struct doubleswitch_s{
     float updebounce;
 	inputdirection_t inputdirection;
 	bool changed;
+	uint8_t angle_target; //%
 	TickType_t downInput_starttime; //ms
 	TickType_t upInput_starttime; //ms
 };
@@ -122,9 +125,9 @@ void setBlindsMovingTimeDown(uint32_t *blindsmovingtime);
 void setBlindsPos50(uint8_t *blindspos50);
 void setRaffstore(bool *raffstore);
 void setRaffstoreMovingtime(uint16_t *raffmovingtime);
+void setBlindInputMatrix(uint16_t *blindinputmatrix);
 void setBlindDirection(struct blind_s *blind);
 void initDoubleswitches(void);
-void readDoubleswitches(void);
 void readDoubleswitch(struct doubleswitch_s *doubleswitch);
 void setBlindcurrentThreshold(int16_t value);
 uint16_t getBlindcurrentThreshold(void);

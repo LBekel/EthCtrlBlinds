@@ -237,7 +237,7 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
             {
                 percent = 0;
             }
-            //printf("Blindposition channel %d: %d%%\r\n",channel,percent);
+
             blinds[channel].angle_target = (double)blinds[channel].angle_movingtime/(double)100*percent;
             //start only moving if blinds are stopped
             if(blinds[channel].blinddirection == blinddirection_off)

@@ -10,7 +10,7 @@
 				<table>
 			<tr>
 				<td>
-					<form method="get" action="/relay.cgi">
+					<form method="get" action="/blinds.cgi">
 					<table height=250>
 					  <tr>
 						<th></th>
@@ -139,6 +139,67 @@
 					</table>
 					<input value="Write Settings" type="submit">
 					</form>
+				</td>
+				<td>
+				<form method="get" action="/swmatrix.cgi">
+					<table height=250>
+					  <tr>
+						<th colspan="9">Inputs</th>
+					  </tr>
+					  <tr>
+						<th>1</th>
+						<th>2</th>
+						<th>3</th>
+						<th>4</th>
+						<th>5</th>
+						<th>6</th>
+						<th>7</th>
+						<th>8</th>
+						<th>9</th>
+						<th></th>
+					  </tr>
+					    <form method="get" action="/swmatrix.cgi">
+					    <tr><!--#input1-->
+					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
+				      </form>
+					  </tr>
+					    <form method="get" action="/swmatrix.cgi">
+					    <tr><!--#input2-->
+					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
+				      </form>
+					  </tr>
+					    <form method="get" action="/swmatrix.cgi">
+					    <tr><!--#input3-->
+					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
+				      </form>
+					  </tr>
+					    <form method="get" action="/swmatrix.cgi">
+					    <tr><!--#input4-->
+					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
+				      </form>
+					  </tr>
+					    <form method="get" action="/swmatrix.cgi">
+					    <tr><!--#input5-->
+					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
+				      </form>
+					  </tr>
+					    <form method="get" action="/swmatrix.cgi">
+					    <tr><!--#input6-->
+					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
+				      </form>
+					  </tr>
+					    <form method="get" action="/swmatrix.cgi">
+					    <tr><!--#input7-->
+					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
+				      </form>
+					  </tr>
+					    <form method="get" action="/swmatrix.cgi">
+					    <tr><!--#input8-->
+					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
+				      </form>
+					<tr></tr>					  
+					</table>
+					
 				</td>
 			</tr>
 		</table>

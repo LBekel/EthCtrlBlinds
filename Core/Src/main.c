@@ -88,11 +88,11 @@ const osThreadAttr_t scanInputTask_attributes = {
 
 uint8_t reset = 0;
 
-static char name[] = "ETH_CTRL_B";
+static char mqtttopic[] = "ETH_CTRL_B";
 struct ee_storage_s eemqtttopic = {
 		.VirtAddrStartNb = 1,
 		.VirtWordCount = 5,
-		.pData = (uint16_t*)name};
+		.pData = (uint16_t*)mqtttopic};
 
 static ip_addr_t hostip = IPADDR4_INIT_BYTES(192,168,1,3);
 struct ee_storage_s eemqtthost = {
@@ -127,16 +127,22 @@ struct ee_storage_s eeblindpos50 = {
 bool raffstore[] = {false,false,false,false,false,false,false,false};
 struct ee_storage_s eeraffstore = {
         .VirtAddrStartNb = 50,
-        .VirtWordCount = 1,
+        .VirtWordCount = 4,
         .pData = (uint16_t*)&raffstore};
 
 uint16_t raffmovingtime[] = {1000,1000,1000,1000,1000,1000,1000,1000};
 struct ee_storage_s eeraffmovingtime = {
-        .VirtAddrStartNb = 51,
+        .VirtAddrStartNb = 54,
         .VirtWordCount = 8,
         .pData = (uint16_t*)&raffmovingtime};
 
-uint16_t VirtAddVarTab[28];
+uint16_t blindinputmatrix[] = {1+256,2+256,4+256,8+256,16+256,32+256,64+256,128+256};
+struct ee_storage_s eeblindinputmatrix = {
+        .VirtAddrStartNb = 62,
+        .VirtWordCount = 8,
+        .pData = (uint16_t*)&blindinputmatrix};
+
+uint16_t VirtAddVarTab[65];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -271,6 +277,12 @@ int main(void)
             EE_WriteStorage(&eeraffmovingtime); //Write default to flash
         }
         setRaffstoreMovingtime((uint16_t*) eeraffmovingtime.pData);
+
+        if(EE_ReadStorage(&eeblindinputmatrix))
+        {
+            EE_WriteStorage(&eeblindinputmatrix); //Write default to flash
+        }
+        setBlindInputMatrix((uint16_t*) eeblindinputmatrix.pData);
     }
     else
     {
@@ -670,11 +682,12 @@ void StartDefaultTask(void *argument)
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
   printf("StartDefaultTask\r\n");
+  netif_set_hostname(&gnetif,mqtttopic);
   httpd_init();
   // initializing CGI  [= CGI #7 =]
   myCGIinit();
   mySSIinit();
-  mdns_resp_add_service(netif_default, "Web-based Configuration", "_http", DNSSD_PROTO_TCP, 80,300, srv_txt, NULL);
+  mdns_resp_add_service(netif_default, "Blinds configuration", "_http", DNSSD_PROTO_TCP, 80,300, srv_txt, NULL);
   //mdns_resp_announce(netif_default);
   /* Infinite loop */
   for(;;)
