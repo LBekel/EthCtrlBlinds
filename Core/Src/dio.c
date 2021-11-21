@@ -162,8 +162,8 @@ void setBlindDirection(struct blind_s *blind)
             {
                 HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
                 HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
-                blind->starttime = xTaskGetTickCount() + MOTORSTARTDELAY;
-                blind->angle_actual = 0; //moving up, so angle is at min
+                blind->starttime = xTaskGetTickCount();// + MOTORSTARTDELAY;
+                //blind->angle_actual = 0; //moving up, so angle is at min
             }
             else
             {
@@ -179,8 +179,8 @@ void setBlindDirection(struct blind_s *blind)
             {
                 HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_SET);
                 HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
-                blind->starttime = xTaskGetTickCount() + MOTORSTARTDELAY;
-                blind->angle_actual = blind->angle_movingtime; //moving down, so angle is at max
+                blind->starttime = xTaskGetTickCount();// + MOTORSTARTDELAY;
+                //blind->angle_actual = blind->angle_movingtime; //moving down, so angle is at max
             }
             else
             {
@@ -341,6 +341,25 @@ void checkBlindPosition(uint8_t channel)
             break;
         case blinddirection_up:
         	//moving up is slower
+
+            if(blinds[channel].angle_function_active)
+            {
+                if(blinds[channel].angle_actual>0) //increment angle if not at end position
+                {
+                    blinds[channel].angle_actual -= xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
+                    blinds[channel].angle_changed = true;
+                }
+                else if(blinds[channel].angle_actual==0)
+                {
+                    blinds[channel].angle_actual = 0;
+                }
+                else
+                {
+                    blinds[channel].angle_actual = 0;
+                    blinds[channel].angle_changed = true;
+                }
+            }
+
             deltaPosition = xTaskGetTickCount() - blinds[channel].starttime;
             if(deltaPosition > 0)
             {
@@ -373,7 +392,24 @@ void checkBlindPosition(uint8_t channel)
             break;
         case blinddirection_down:
         	//moving down is faster, so add a factor to the real time
-            //blinds[channel].position_actual += xTaskGetTickCount() - blinds[channel].starttime; //add the time past since last check
+            if(blinds[channel].angle_function_active)
+            {
+                if(blinds[channel].angle_actual<blinds[channel].angle_movingtime) //increment angle if not at end position
+                {
+                    blinds[channel].angle_actual += xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
+                    blinds[channel].angle_changed = true;
+                }
+                else if(blinds[channel].angle_actual == blinds[channel].angle_movingtime)
+                {
+                    blinds[channel].angle_actual = blinds[channel].angle_movingtime;
+                }
+                else
+                {
+                    blinds[channel].angle_actual = blinds[channel].angle_movingtime;
+                    blinds[channel].angle_changed = true;
+                }
+            }
+
             deltaPosition = xTaskGetTickCount() - blinds[channel].starttime;
             if(deltaPosition > 0)
             {
@@ -436,7 +472,7 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                         if(blinds[blindchannel].blinddirection != blinddirection_up) //if not set do it now
                         {
                             blinds[blindchannel].blinddirection = blinddirection_up;
-                            blinds[blindchannel].position_target = 0 - 1000;
+                            blinds[blindchannel].position_target = 0;// - 1000;
                             blinds[blindchannel].angle_target = angletime;
                             setBlindDirection(&blinds[blindchannel]);
                             publish_blinddir_stat(&blinds[blindchannel]);
@@ -446,7 +482,7 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                         if(blinds[blindchannel].blinddirection != blinddirection_down) //if not set do it now
                         {
                             blinds[blindchannel].blinddirection = blinddirection_down;
-                            blinds[blindchannel].position_target = blinds[blindchannel].position_movingtimeup + 1000;
+                            blinds[blindchannel].position_target = blinds[blindchannel].position_movingtimeup;// + 1000;
                             blinds[blindchannel].angle_target = angletime;
                             setBlindDirection(&blinds[blindchannel]);
                             publish_blinddir_stat(&blinds[blindchannel]);
