@@ -49,11 +49,6 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-/* Software Reset */
-/* Rebase the stack pointer and the vector table base address to bootloader */
-#define RESET_CMD() __set_MSP(*(uint32_t *) (ADDR_FLASH_SECTOR_0));  \
-  SCB->VTOR = ((uint32_t) (ADDR_FLASH_SECTOR_0) & SCB_VTOR_TBLOFF_Msk); \
-    NVIC_SystemReset()
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -142,7 +137,13 @@ struct ee_storage_s eeblindinputmatrix = {
         .VirtWordCount = 8,
         .pData = (uint16_t*)&blindinputmatrix};
 
-uint16_t VirtAddVarTab[65];
+bool position_function_active[] = {true,true,true,true,true,true,true,true};
+struct ee_storage_s eeposition_function_active = {
+        .VirtAddrStartNb = 70,
+        .VirtWordCount = 4,
+        .pData = (uint16_t*)&position_function_active};
+
+uint16_t VirtAddVarTab[74];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -283,6 +284,12 @@ int main(void)
             EE_WriteStorage(&eeblindinputmatrix); //Write default to flash
         }
         setBlindInputMatrix((uint16_t*) eeblindinputmatrix.pData);
+
+        if(EE_ReadStorage(&eeposition_function_active))
+        {
+            EE_WriteStorage(&eeposition_function_active); //Write default to flash
+        }
+        setPositionFunction((bool*) eeposition_function_active.pData);
     }
     else
     {

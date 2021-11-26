@@ -82,6 +82,7 @@ void initBlinds()
         blinds[var].upRelay_Pin = Relay_Pins[var * 2 + 1];
         blinds[var].upRelay_Port = Relay_Ports[var * 2 + 1];
         blinds[var].blinddirection = blinddirection_off;
+        blinds[var].position_function_active = true;
         blinds[var].position_actual = 0;
         blinds[var].position_changed = true;
         blinds[var].blindlearn = blindlearn_finished;
@@ -136,6 +137,13 @@ void setBlindInputMatrix(uint16_t *blindinputmatrix)
         blinds[var].inputmatrix = (uint16_t) blindinputmatrix[var];
     }
 }
+void setPositionFunction(bool *position_function_active)
+{
+    for(int var = 0; var < num_blinds; var++)
+    {
+        blinds[var].position_function_active = position_function_active[var];
+    }
+}
 
 void setBlindDirection(struct blind_s *blind)
 {
@@ -163,7 +171,6 @@ void setBlindDirection(struct blind_s *blind)
                 HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
                 HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
                 blind->starttime = xTaskGetTickCount();// + MOTORSTARTDELAY;
-                //blind->angle_actual = 0; //moving up, so angle is at min
             }
             else
             {
@@ -175,12 +182,11 @@ void setBlindDirection(struct blind_s *blind)
             break;
         case blinddirection_down:
 
-            if(blind->position_actual < blind->position_target) //check if we are not on the buttom position
+            if(blind->position_actual < blind->position_target) //check if we are not on the bottom position
             {
                 HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_SET);
                 HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
                 blind->starttime = xTaskGetTickCount();// + MOTORSTARTDELAY;
-                //blind->angle_actual = blind->angle_movingtime; //moving down, so angle is at max
             }
             else
             {
@@ -474,6 +480,10 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                             blinds[blindchannel].blinddirection = blinddirection_up;
                             blinds[blindchannel].position_target = 0 - 1000;
                             blinds[blindchannel].angle_target = 0;
+                            if(blinds[blindchannel].position_function_active == false)
+                            {
+                                blinds[blindchannel].position_actual = blinds[blindchannel].position_movingtimeup;
+                            }
                             setBlindDirection(&blinds[blindchannel]);
                             publish_blinddir_stat(&blinds[blindchannel]);
                         }
@@ -484,6 +494,10 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                             blinds[blindchannel].blinddirection = blinddirection_down;
                             blinds[blindchannel].position_target = blinds[blindchannel].position_movingtimeup + 1000;
                             blinds[blindchannel].angle_target = blinds[blindchannel].angle_movingtime;
+                            if(blinds[blindchannel].position_function_active == false)
+                            {
+                                blinds[blindchannel].position_actual = 0;
+                            }
                             setBlindDirection(&blinds[blindchannel]);
                             publish_blinddir_stat(&blinds[blindchannel]);
                         }

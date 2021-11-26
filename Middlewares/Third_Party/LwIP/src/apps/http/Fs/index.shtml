@@ -7,146 +7,87 @@
 	<body>
 		<h3>ETHERNET CONTROL BLINDS</h3>
 		Version: <!--#compiled--><br><br>
-				<table>
+		<table>
 			<tr>
 				<td>
 					<form method="get" action="/blinds.cgi">
-					<table height=250>
-					  <tr>
+					<table>
+					  <tr height="30px">
+					    <th colspan="3"></th>
+					  </tr>
+					  <tr height="30px">
 						<th></th>
 						<th>Direction<br></th>
 						<th>Blind<br>Position</th>
 						<th>Angle<br>Position</th>
 					  </tr>
-					  <tr>
+					  <tr height="30px">
 						<td>blind1:</td>
 						<td><!--#blind1--></td>
 						<td><!--#pos1--></td>
 						<td><!--#angle1--></td>
 					  </tr>
-					  <tr>
+					  <tr height="30px">
 						<td>blind2:</td>
 						<td><!--#blind2--></td>
 						<td><!--#pos2--></td>
 						<td><!--#angle2--></td>
 					  </tr>
-					  <tr>
+					  <tr height="30px">
 						<td>blind3:</td>
 						<td><!--#blind3--></td>
 						<td><!--#pos3--></td>
 						<td><!--#angle3--></td>
 					  </tr>
-					  <tr>
+					  <tr height="30px">
 						<td>blind4:</td>
 						<td><!--#blind4--></td>
 						<td><!--#pos4--></td>
 						<td><!--#angle4--></td>
 					  </tr>
-					  <tr>
+					  <tr height="30px">
 						<td>blind5:</td>
 						<td><!--#blind5--></td>
 						<td><!--#pos5--></td>
 						<td><!--#angle5--></td>
 					  </tr>
-					  <tr>
+					  <tr height="30px">
 						<td>blind6:</td>
 						<td><!--#blind6--></td>
 						<td><!--#pos6--></td>
 						<td><!--#angle6--></td>
 					  </tr>
-					  <tr>
+					  <tr height="30px">
 						<td>blind7:</td>
 						<td><!--#blind7--></td>
 						<td><!--#pos7--></td>
 						<td><!--#angle7--></td>
 					  </tr>
-					  <tr>
+					  <tr height="30px">
 						<td>blind8:</td>
 						<td><!--#blind8--></td>
 						<td><!--#pos8--></td>
 						<td><!--#angle8--></td>
 					  </tr>
-					</table>
-					<input value="Move" type="submit">
+					  <tr height="30px">
+					    <td><input value="Move" type="submit"></td>
+					  </tr>
 					</form>
+					</table>
 				</td>
 				<td>
-				<form method="get" action="/setting.cgi">
-					<table height=250>
-					  <tr>
+					<table>
+					  <tr height="30px">
+					    <th colspan="6"></th>
+						<th colspan="9">Inputs</th>
+					  </tr>
+					  <tr height="30px">
+					  	<th>Position<br></th>
 						<th>Movingtime<br>up [ms]</th>
 						<th>Movingtime<br>down [ms]</th>
 						<th>50%<br></th>
 						<th>Raffstore<br></th>
 						<th>Raffstoretime<br>[ms]</th>
-					  </tr>
-					  <tr>
-						<td><!--#timeup1--></td>
-						<td><!--#timedo1--></td>
-						<td><!--#per50_1--></td>
-						<td><!--#raff1--></td>
-						<td><!--#rafftim1--></td>
-					  </tr>
-					  <tr>
-						<td><!--#timeup2--></td>
-						<td><!--#timedo2--></td>
-						<td><!--#per50_2--></td>
-						<td><!--#raff2--></td>
-						<td><!--#rafftim2--></td>
-					  </tr>
-					  <tr>
-						<td><!--#timeup3--></td>
-						<td><!--#timedo3--></td>
-						<td><!--#per50_3--></td>
-						<td><!--#raff3--></td>
-						<td><!--#rafftim3--></td>
-					  </tr>
-					  <tr>
-						<td><!--#timeup4--></td>
-						<td><!--#timedo4--></td>
-						<td><!--#per50_4--></td>
-						<td><!--#raff4--></td>
-						<td><!--#rafftim4--></td>
-					  </tr>
-					  <tr>
-						<td><!--#timeup5--></td>
-						<td><!--#timedo5--></td>
-						<td><!--#per50_5--></td>
-						<td><!--#raff5--></td>
-						<td><!--#rafftim5--></td>
-					  </tr>
-					  <tr>
-						<td><!--#timeup6--></td>
-						<td><!--#timedo6--></td>
-						<td><!--#per50_6--></td>
-						<td><!--#raff6--></td>
-						<td><!--#rafftim6--></td>
-					  </tr>
-					  <tr>
-						<td><!--#timeup7--></td>
-						<td><!--#timedo7--></td>
-						<td><!--#per50_7--></td>
-						<td><!--#raff7--></td>
-						<td><!--#rafftim7--></td>
-					  </tr>
-					  <tr>
-						<td><!--#timeup8--></td>
-						<td><!--#timedo8--></td>
-						<td><!--#per50_8--></td>
-						<td><!--#raff8--></td>
-						<td><!--#rafftim8--></td>
-					  </tr>
-					</table>
-					<input value="Write Settings" type="submit">
-					</form>
-				</td>
-				<td>
-				<form method="get" action="/swmatrix.cgi">
-					<table height=250>
-					  <tr>
-						<th colspan="9">Inputs</th>
-					  </tr>
-					  <tr>
 						<th>1</th>
 						<th>2</th>
 						<th>3</th>
@@ -158,48 +99,113 @@
 						<th>9</th>
 						<th></th>
 					  </tr>
-					    <form method="get" action="/swmatrix.cgi">
-					    <tr><!--#input1-->
-					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
-				      </form>
+					    <form method="get" action="/setting.cgi">
+						<tr height="30px">
+						  <td><!--#pfunc1--></td>
+						  <td><!--#timeup1--></td>
+						  <td><!--#timedo1--></td>
+						  <td><!--#per50_1--></td>
+						  <td><!--#raff1--></td>
+						  <td><!--#rafftim1--></td>
+						  <!--#input1-->
+					      <td><input value="Write Settings" type="submit"></td>
+						</tr>
+						</form>
 					  </tr>
-					    <form method="get" action="/swmatrix.cgi">
-					    <tr><!--#input2-->
-					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
-				      </form>
+					    <form method="get" action="/setting.cgi">
+					    <tr height="30px">
+						  <td><!--#pfunc2--></td>
+						  <td><!--#timeup2--></td>
+						  <td><!--#timedo2--></td>
+						  <td><!--#per50_2--></td>
+						  <td><!--#raff2--></td>
+						  <td><!--#rafftim2--></td>
+						  <!--#input2-->
+					      <td><input value="Write Settings" type="submit"></td>
+						</tr>
+						</form>
 					  </tr>
-					    <form method="get" action="/swmatrix.cgi">
-					    <tr><!--#input3-->
-					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
-				      </form>
+					    <form method="get" action="/setting.cgi">
+					    <tr height="30px">
+						  <td><!--#pfunc3--></td>
+						  <td><!--#timeup3--></td>
+						  <td><!--#timedo3--></td>
+						  <td><!--#per50_3--></td>
+						  <td><!--#raff3--></td>
+						  <td><!--#rafftim3--></td>
+						  <!--#input3-->
+					      <td><input value="Write Settings" type="submit"></td>
+						</tr>
+						</form>
 					  </tr>
-					    <form method="get" action="/swmatrix.cgi">
-					    <tr><!--#input4-->
-					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
-				      </form>
+					    <form method="get" action="/setting.cgi">
+					    <tr height="30px">
+						  <td><!--#pfunc4--></td>
+						  <td><!--#timeup4--></td>
+						  <td><!--#timedo4--></td>
+						  <td><!--#per50_4--></td>
+						  <td><!--#raff4--></td>
+						  <td><!--#rafftim4--></td>
+						  <!--#input4-->
+					      <td><input value="Write Settings" type="submit"></td>
+						</tr>
+						</form>
 					  </tr>
-					    <form method="get" action="/swmatrix.cgi">
-					    <tr><!--#input5-->
-					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
-				      </form>
+					    <form method="get" action="/setting.cgi">
+					    <tr height="30px">
+						  <td><!--#pfunc5--></td>
+						  <td><!--#timeup5--></td>
+						  <td><!--#timedo5--></td>
+						  <td><!--#per50_5--></td>
+						  <td><!--#raff5--></td>
+						  <td><!--#rafftim5--></td>
+						  <!--#input5-->
+					      <td><input value="Write Settings" type="submit"></td>
+						</tr>
+						</form>
 					  </tr>
-					    <form method="get" action="/swmatrix.cgi">
-					    <tr><!--#input6-->
-					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
-				      </form>
+					    <form method="get" action="/setting.cgi">
+					    <tr height="30px">
+						  <td><!--#pfunc6--></td>
+						  <td><!--#timeup6--></td>
+						  <td><!--#timedo6--></td>
+						  <td><!--#per50_6--></td>
+						  <td><!--#raff6--></td>
+						  <td><!--#rafftim6--></td>
+						  <!--#input6-->
+					      <td><input value="Write Settings" type="submit"></td>
+						</tr>
+						</form>
 					  </tr>
-					    <form method="get" action="/swmatrix.cgi">
-					    <tr><!--#input7-->
-					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
-				      </form>
+					    <form method="get" action="/setting.cgi">
+					    <tr height="30px">
+						  <td><!--#pfunc7--></td>
+						  <td><!--#timeup7--></td>
+						  <td><!--#timedo7--></td>
+						  <td><!--#per50_7--></td>
+						  <td><!--#raff7--></td>
+						  <td><!--#rafftim7--></td>
+						  <!--#input7-->
+					      <td><input value="Write Settings" type="submit"></td>
+						</tr>
+						</form>
 					  </tr>
-					    <form method="get" action="/swmatrix.cgi">
-					    <tr><!--#input8-->
-					    <td><input value="Write Switch Matrix" type="submit"></td></tr>
-				      </form>
-					<tr></tr>					  
+					    <form method="get" action="/setting.cgi">
+					    <tr height="30px">
+						  <td><!--#pfunc8--></td>
+						  <td><!--#timeup8--></td>
+						  <td><!--#timedo8--></td>
+						  <td><!--#per50_8--></td>
+						  <td><!--#raff8--></td>
+						  <td><!--#rafftim8--></td>
+						  <!--#input8-->
+					      <td><input value="Write Settings" type="submit"></td>
+						</tr>
+						<tr height="30px">
+						  <td></td>
+						</tr>
+						</form>
 					</table>
-					
 				</td>
 			</tr>
 		</table>

@@ -19,7 +19,6 @@ const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
 const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
-const char* InputCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
 uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen);
 
 const tCGI BlindsCGI = {"/blinds.cgi", BlindsCGIhandler};
@@ -28,16 +27,16 @@ const tCGI LearnCGI = {"/learn.cgi", LearnCGIhandler};
 const tCGI SettingCGI = {"/setting.cgi", SettingCGIhandler};
 const tCGI BootloaderCGI = {"/bootloader.cgi", BootloaderCGIhandler};
 const tCGI PositionCGI = {"/position.cgi", PositionCGIhandler};
-const tCGI InputCGI = {"/swmatrix.cgi", InputCGIhandler};
 
 struct ee_storage_s eemqtttopic;
 extern struct ee_storage_s eemqtthost;
 
-#define theCGItableSize 7
+#define theCGItableSize 6
 tCGI theCGItable[theCGItableSize];
 
 #define SSITAGS C(blind1)C(blind2)C(blind3)C(blind4)C(blind5)C(blind6)C(blind7)C(blind8)\
                 C(mqtttopic)C(mqtthost)C(current)\
+                C(pfunc1)C(pfunc2)C(pfunc3)C(pfunc4)C(pfunc5)C(pfunc6)C(pfunc7)C(pfunc8)\
                 C(timeup1)C(timeup2)C(timeup3)C(timeup4)C(timeup5)C(timeup6)C(timeup7)C(timeup8)\
                 C(timedo1)C(timedo2)C(timedo3)C(timedo4)C(timedo5)C(timedo6)C(timedo7)C(timedo8)\
                 C(pos1)C(pos2)C(pos3)C(pos4)C(pos5)C(pos6)C(pos7)C(pos8)\
@@ -63,7 +62,6 @@ void myCGIinit(void)
     theCGItable[3] = SettingCGI;
     theCGItable[4] = BootloaderCGI;
     theCGItable[5] = PositionCGI;
-    theCGItable[6] = InputCGI;
     //give the table to the HTTP server
     http_set_cgi_handlers(theCGItable, theCGItableSize);
 }
@@ -90,12 +88,20 @@ const char* BlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *
                 blinds[channel].blinddirection = blinddirection_up;
                 blinds[channel].position_target = 0 - 1000;
                 blinds[channel].angle_target = 0;
+                if(blinds[channel].position_function_active == false)
+                {
+                    blinds[channel].position_actual = blinds[channel].position_movingtimeup;
+                }
             }
             else if(strcmp(pcValue[channel], "down") == 0)
             {
                 blinds[channel].blinddirection = blinddirection_down;
                 blinds[channel].position_target = blinds[var].position_movingtimeup + 1000;
                 blinds[channel].angle_target = blinds[channel].angle_movingtime;
+                if(blinds[channel].position_function_active == false)
+                {
+                    blinds[channel].position_actual = 0;
+                }
             }
             else
             {
@@ -163,92 +169,126 @@ const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
 
 const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
-    bool raffstoretemp[] = {false,false,false,false,false,false,false,false};
+    bool temp_raffstore = false;
+    uint16_t temp_blindinput = 0;
+    bool temp_posfunc = false;
+    uint8_t inputchannel = 0;
+    uint8_t blindchannel = 0;
+
     for(uint8_t var = 0; var < iNumParams; var++)
     {
-        uint8_t channel = 0;
         uint8_t value8 = 0;
         uint16_t value16 = 0;
         uint32_t value32 = 0;
+
+        if(strncmp(pcParam[var], theSSItags[input1],5) == 0)
+        {
+            sscanf(pcParam[var]+7, "%"PRIu8"", &blindchannel);
+            blindchannel--;
+            sscanf(pcParam[var]+5, "%"PRIu8"", &inputchannel);
+            inputchannel--;
+            temp_blindinput += 1<<inputchannel;
+            continue;
+        }
+
         if(strncmp(pcParam[var], theSSItags[timeup1], 6) == 0)
         {
-            sscanf(pcParam[var]+6, "%"PRIu8"", &channel);
-            channel--;
+            sscanf(pcParam[var]+6, "%"PRIu8"", &blindchannel);
+            blindchannel--;
             sscanf(pcValue[var], "%"PRIu32"", &value32);
             //only write to eeprom if value has changed
-            if (value32!=blindmovingtimeup[channel])
+            if (value32!=blindmovingtimeup[blindchannel])
             {
-                blindmovingtimeup[channel] = value32;
+                blindmovingtimeup[blindchannel] = value32;
                 EE_WriteStorage(&eeblindmovingtimeup);
                 setBlindsMovingTimeUp((uint32_t*) &blindmovingtimeup);
             }
+            continue;
         }
 
         if(strncmp(pcParam[var], theSSItags[timedo1], 6) == 0)
         {
-            sscanf(pcParam[var]+6, "%"PRIu8"", &channel);
-            channel--;
+            sscanf(pcParam[var]+6, "%"PRIu8"", &blindchannel);
+            blindchannel--;
             sscanf(pcValue[var], "%"PRIu32"", &value32);
             //only write to eeprom if value has changed
-            if (value32!=blindmovingtimedown[channel])
+            if (value32!=blindmovingtimedown[blindchannel])
             {
-                blindmovingtimedown[channel] = value32;
+                blindmovingtimedown[blindchannel] = value32;
                 EE_WriteStorage(&eeblindmovingtimedown);
                 setBlindsMovingTimeDown((uint32_t*) &blindmovingtimedown);
             }
+            continue;
         }
         if(strncmp(pcParam[var], theSSItags[per50_1], 5) == 0)
         {
-            sscanf(pcParam[var]+6, "%"PRIu8"", &channel);
-            channel--;
+            sscanf(pcParam[var]+6, "%"PRIu8"", &blindchannel);
+            blindchannel--;
             sscanf(pcValue[var], "%2"PRIu8"", &value8);
-            if (value8!=blindpos50[channel])
+            if (value8!=blindpos50[blindchannel])
             {
-                blindpos50[channel] = value8;
+                blindpos50[blindchannel] = value8;
                 EE_WriteStorage(&eeblindpos50);
                 setBlindsPos50((uint8_t*)&blindpos50);
             }
-        }
-        if(strncmp(pcParam[var], theSSItags[raff1], 4) == 0)
-        {
-            sscanf(pcParam[var]+4, "%"PRIu8"", &channel);
-            channel--;
-            raffstoretemp[channel] = true;
-
+            continue;
         }
 
         if(strncmp(pcParam[var], theSSItags[rafftim1], 7) == 0)
         {
-            sscanf(pcParam[var]+7, "%"PRIu8"", &channel);
-            channel--;
+            sscanf(pcParam[var]+7, "%"PRIu8"", &blindchannel);
+            blindchannel--;
             sscanf(pcValue[var], "%"PRIu16"", &value16);
             //only write to eeprom if value has changed
-            if (value16!=raffmovingtime[channel])
+            if (value16!=raffmovingtime[blindchannel])
             {
-                raffmovingtime[channel] = value16;
+                raffmovingtime[blindchannel] = value16;
                 EE_WriteStorage(&eeraffmovingtime);
                 setRaffstoreMovingtime((uint16_t*) &raffmovingtime);
             }
+            continue;
+        }
+
+        if(strncmp(pcParam[var], theSSItags[raff1], 4) == 0)
+        {
+            sscanf(pcParam[var]+4, "%"PRIu8"", &blindchannel);
+            blindchannel--;
+            temp_raffstore = true;
+            continue;
+        }
+
+        if(strncmp(pcParam[var], theSSItags[pfunc1], 5) == 0)
+        {
+            sscanf(pcParam[var]+5, "%"PRIu8"", &blindchannel); //
+            blindchannel--;
+            temp_posfunc = true;
+            continue;
         }
     }
 
-    bool changed = false;
-    for(uint8_t channel = 0; channel < num_blinds; channel++)
+    //only write to eeprom if value has changed
+    if(position_function_active[blindchannel] != temp_posfunc)
     {
-        if(raffstoretemp[channel] != raffstore[channel])
-        {
-            raffstore[channel] = raffstoretemp[channel];
-            changed = true;
-        }
+        position_function_active[blindchannel] = temp_posfunc;
+        EE_WriteStorage(&eeposition_function_active);
+        setPositionFunction((bool*) &position_function_active);
     }
-    if(changed)
+
+    //only write to eeprom if value has changed
+    if(raffstore[blindchannel] != temp_raffstore)
     {
+        raffstore[blindchannel] = temp_raffstore;
         EE_WriteStorage(&eeraffstore);
         setRaffstore((bool*) &raffstore);
     }
 
-
-
+    //only write to eeprom if value has changed
+    if(blindinputmatrix[blindchannel] != temp_blindinput)
+    {
+        blindinputmatrix[blindchannel] = temp_blindinput;
+        EE_WriteStorage(&eeblindinputmatrix);
+        setBlindInputMatrix((uint16_t*)&blindinputmatrix);
+    }
 
     return "/return.html";
 }
@@ -260,7 +300,6 @@ const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], ch
 
     return "/startapp.html";
 }
-
 
 const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
@@ -283,32 +322,6 @@ const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char
             channel--;
         }
     }
-    return "/return.html";
-}
-
-const char* InputCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
-{
-    uint8_t input = 0;
-    uint8_t blind = 0;
-    uint16_t temp_blindinput = 0;
-
-    sscanf(pcParam[0]+7, "%"PRIu8"", &blind);
-    blind--;
-
-    for(uint8_t var = 0; var < iNumParams; var++)
-    {
-        if(strncmp(pcParam[var], theSSItags[input1],5) == 0)
-        {
-            sscanf(pcParam[var]+5, "%"PRIu8"", &input);
-            input--;
-
-            temp_blindinput += 1<<input;
-        }
-    }
-    blindinputmatrix[blind] = temp_blindinput;
-    setBlindInputMatrix((uint16_t*)&blindinputmatrix);
-    EE_WriteStorage(&eeblindinputmatrix);
-
     return "/return.html";
 }
 
@@ -459,6 +472,24 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
             sprintf(name,"input%d_%d,",input+1,blind);
             position += sprintf(myStr+position, "<td><input name=\"%s\"type=\"checkbox\" id=\"%s\" %s/></td>",name,name,checked);
         }
+        strcpy(pcInsert, myStr);
+        return strlen(myStr);
+    }
+    if((iIndex >= pfunc1) && (iIndex <= pfunc8))
+    {
+        uint8_t blind = iIndex - pfunc1 + 1;
+        char checked[8];
+        char name[10];
+        if(blinds[blind-1].position_function_active)
+        {
+            sprintf(checked,"checked");
+        }
+        else
+        {
+            sprintf(checked," ");
+        }
+        sprintf(name,"pfunc%d,",blind);
+        sprintf(myStr, "<input name=\"%s\" type=\"checkbox\" id=\"%s\" %s/>",name,name,checked);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }

@@ -47,6 +47,7 @@ extern struct ee_storage_s eeblindpos50;
 extern struct ee_storage_s eeraffstore;
 extern struct ee_storage_s eeraffmovingtime;
 extern struct ee_storage_s eeblindinputmatrix;
+extern struct ee_storage_s eeposition_function_active;
 extern uint32_t blindmovingtimeup[];
 extern uint32_t blindmovingtimedown[];
 extern uint16_t currentthreshold;
@@ -54,6 +55,7 @@ extern uint8_t blindpos50[];
 extern bool raffstore[];
 extern uint16_t raffmovingtime[];
 extern uint16_t blindinputmatrix[];
+extern bool position_function_active[];
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

@@ -34,6 +34,7 @@ struct blind_s{
 	uint16_t upRelay_Pin;
 	GPIO_TypeDef * upRelay_Port;
 	blinddirection_t blinddirection;
+	bool position_function_active;
 	int32_t position_actual; //ms
 	int32_t position_target;//ms
 	bool position_changed;
@@ -126,6 +127,7 @@ void setBlindsPos50(uint8_t *blindspos50);
 void setRaffstore(bool *raffstore);
 void setRaffstoreMovingtime(uint16_t *raffmovingtime);
 void setBlindInputMatrix(uint16_t *blindinputmatrix);
+void setPositionFunction(bool *position_function_active);
 void setBlindDirection(struct blind_s *blind);
 void initDoubleswitches(void);
 void readDoubleswitch(struct doubleswitch_s *doubleswitch);
