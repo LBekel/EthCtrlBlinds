@@ -228,11 +228,19 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
                     if(blinds[channel].position_actual > blinds[channel].position_target)
                     {
                         blinds[channel].blinddirection = blinddirection_up;
+                        if(blinds[channel].position_function_active == false)
+                        {
+                            blinds[channel].position_actual = blinds[channel].position_movingtimeup;
+                        }
                         blinds[channel].angle_target = 0;
                     }
                     else
                     {
                         blinds[channel].blinddirection = blinddirection_down;
+                        if(blinds[channel].position_function_active == false)
+                        {
+                            blinds[channel].position_actual = 0;
+                        }
                         blinds[channel].angle_target = blinds[channel].angle_movingtime;
                     }
                     setBlindDirection(&blinds[channel]);
