@@ -103,4 +103,3 @@ void vApplicationMallocFailedHook(void)
 
 /* USER CODE END Application */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

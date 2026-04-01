@@ -1,3 +1,4 @@
+/* USER CODE BEGIN Header */
 /**
  ******************************************************************************
   * File Name          : LWIP.c
@@ -6,16 +7,16 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * Copyright (c) 2026 STMicroelectronics.
+  * All rights reserved.
   *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
   *
   ******************************************************************************
   */
+/* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
 #include "lwip.h"
@@ -31,16 +32,13 @@
 #include "mdns.h"
 /* USER CODE END 0 */
 /* Private function prototypes -----------------------------------------------*/
+static void ethernet_link_status_updated(struct netif *netif);
 /* ETH Variables initialization ----------------------------------------------*/
 void Error_Handler(void);
 
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */
-/* Semaphore to signal Ethernet Link state update */
-osSemaphoreId Netif_LinkSemaphore = NULL;
-/* Ethernet link thread Argument */
-struct link_str link_arg;
 
 /* Variables Initialization */
 struct netif gnetif;
@@ -61,7 +59,7 @@ osThreadAttr_t attributes;
   */
 void MX_LWIP_Init(void)
 {
-  /* Initilialize the LwIP stack with RTOS */
+  /* Initialize the LwIP stack with RTOS */
   tcpip_init( NULL, NULL );
 
   /* IP addresses initialization with DHCP (IPv4) */
@@ -75,33 +73,20 @@ void MX_LWIP_Init(void)
   /* Registers the default network interface */
   netif_set_default(&gnetif);
 
-  if (netif_is_link_up(&gnetif))
-  {
-    /* When the netif is fully configured this function must be called */
-    netif_set_up(&gnetif);
-  }
-  else
-  {
-    /* When the netif link is down this function must be called */
-    netif_set_down(&gnetif);
-  }
+  /* We must always bring the network interface up connection or not... */
+  netif_set_up(&gnetif);
 
   /* Set the link callback function, this function is called on change of link status*/
-  netif_set_link_callback(&gnetif, ethernetif_update_config);
+  netif_set_link_callback(&gnetif, ethernet_link_status_updated);
 
-  /* create a binary semaphore used for informing ethernetif of frame reception */
-  Netif_LinkSemaphore = osSemaphoreNew(1, 1, NULL);
-
-  link_arg.netif = &gnetif;
-  link_arg.semaphore = Netif_LinkSemaphore;
   /* Create the Ethernet link handler thread */
-/* USER CODE BEGIN OS_THREAD_NEW_CMSIS_RTOS_V2 */
+/* USER CODE BEGIN H7_OS_THREAD_NEW_CMSIS_RTOS_V2 */
   memset(&attributes, 0x0, sizeof(osThreadAttr_t));
-  attributes.name = "LinkThr";
+  attributes.name = "EthLink";
   attributes.stack_size = INTERFACE_THREAD_STACK_SIZE;
-  attributes.priority = osPriorityNormal7;
-  osThreadNew(ethernetif_set_link, &link_arg, &attributes);
-/* USER CODE END OS_THREAD_NEW_CMSIS_RTOS_V2 */
+  attributes.priority = osPriorityBelowNormal;
+  osThreadNew(ethernet_link_thread, &gnetif, &attributes);
+/* USER CODE END H7_OS_THREAD_NEW_CMSIS_RTOS_V2 */
 
   /* Start DHCP negotiation for a network interface (IPv4) */
   dhcp_start(&gnetif);
@@ -128,6 +113,25 @@ void MX_LWIP_Init(void)
 /* USER CODE BEGIN 4 */
 /* USER CODE END 4 */
 #endif
+
+/**
+  * @brief  Notify the User about the network interface config status
+  * @param  netif: the network interface
+  * @retval None
+  */
+static void ethernet_link_status_updated(struct netif *netif)
+{
+  if (netif_is_up(netif))
+  {
+/* USER CODE BEGIN 5 */
+/* USER CODE END 5 */
+  }
+  else /* netif is down */
+  {
+/* USER CODE BEGIN 6 */
+/* USER CODE END 6 */
+  }
+}
 
 #if defined ( __CC_ARM )  /* MDK ARM Compiler */
 /**
@@ -202,4 +206,3 @@ u32_t sio_tryread(sio_fd_t fd, u8_t *data, u32_t len)
 }
 #endif /* MDK ARM Compiler */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
