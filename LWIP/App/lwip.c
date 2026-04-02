@@ -52,6 +52,20 @@ osThreadAttr_t attributes;
 
 /* USER CODE BEGIN 2 */
 
+/**
+  * @brief  This function notify user about link status changement.
+  * @param  netif: the network interface
+  * @retval None
+  */
+void ethernet_status_updated(struct netif *netif)
+{
+  /* NOTE : This is function could be implemented in user file
+            when the callback is needed,
+  */
+  printf("New IP Address: %s\r\n", ipaddr_ntoa(&netif->ip_addr));
+  printf("MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\r\n",netif->hwaddr[0],netif->hwaddr[1],netif->hwaddr[2],netif->hwaddr[3],netif->hwaddr[4],netif->hwaddr[5]);
+  //mdns_resp_announce(netif);
+}
 /* USER CODE END 2 */
 
 /**
@@ -92,7 +106,7 @@ void MX_LWIP_Init(void)
   dhcp_start(&gnetif);
 
 /* USER CODE BEGIN 3 */
-  netif_set_status_callback(&gnetif, ethernet_status_callback);
+  netif_set_status_callback(&gnetif, ethernet_status_updated);
 
 #if LWIP_MDNS_RESPONDER
   mdns_resp_init();

@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2026 STMicroelectronics.
+  * Copyright (c) 2025 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -27,7 +27,7 @@
 #include "lwip/ethip6.h"
 #include "ethernetif.h"
 /* USER CODE BEGIN Include for User BSP */
-
+#include "PHY_KSZ8081RNA.h"
 /* USER CODE END Include for User BSP */
 #include <string.h>
 #include "cmsis_os.h"
@@ -36,6 +36,12 @@
 /* Within 'USER CODE' section, code will be kept by default at each generation */
 /* USER CODE BEGIN 0 */
 #include "md5.h"
+
+int32_t ETH_PHY_IO_Init(void);
+int32_t ETH_PHY_IO_DeInit(void);
+int32_t ETH_PHY_IO_ReadReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t *pRegVal);
+int32_t ETH_PHY_IO_WriteReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t RegVal);
+int32_t ETH_PHY_IO_GetTick(void);
 /* USER CODE END 0 */
 
 /* Private define ------------------------------------------------------------*/
@@ -56,6 +62,14 @@
 #define ETH_TX_BUFFER_MAX             ((ETH_TX_DESC_CNT) * 2U)
 
 /* USER CODE BEGIN 1 */
+static ksz8081_Object_t KSZ8081;
+static ksz8081_IOCtx_t KSZ8081_IOCtx = {
+  .Init = ETH_PHY_IO_Init,
+  .DeInit = ETH_PHY_IO_DeInit,
+  .WriteReg = ETH_PHY_IO_WriteReg,
+  .ReadReg = ETH_PHY_IO_ReadReg,
+  .GetTick = ETH_PHY_IO_GetTick
+};
 
 /* USER CODE END 1 */
 
@@ -122,7 +136,7 @@ ETH_DMADescTypeDef DMATxDscrTab[ETH_TX_DESC_CNT] __attribute__((section(".TxDecr
 #endif
 
 /* USER CODE BEGIN 2 */
-
+__attribute__((section(".eth"))) uint8_t memp_memory_RX_POOL_base[];
 /* USER CODE END 2 */
 
 osSemaphoreId RxPktSemaphore = NULL;   /* Semaphore to signal incoming packets */
@@ -173,7 +187,21 @@ void HAL_ETH_ErrorCallback(ETH_HandleTypeDef *handlerEth)
 }
 
 /* USER CODE BEGIN 4 */
-
+void SetupMacAdress(uint8_t *MACAddr)
+{
+  MD5_CTX md5;
+  uint8_t digest[16];
+  MD5_Init(&md5);
+  MD5_Update(&md5, (uint8_t*)UID_BASE, 12);//96 bits = 12 bytes
+  MD5_Final(digest, &md5);
+  MACAddr[0] = ((digest[0] & ~0x01) //clear bit 0 (broadcast bit)
+                       | 0x02); //set bit 1 (locally assigned address)
+  MACAddr[1] = digest[1];
+  MACAddr[2] = digest[2];
+  MACAddr[3] = digest[3];
+  MACAddr[4] = digest[4];
+  MACAddr[5] = digest[5];
+}
 /* USER CODE END 4 */
 
 /*******************************************************************************
@@ -193,7 +221,9 @@ static void low_level_init(struct netif *netif)
   osThreadAttr_t attributes;
 /* USER CODE END OS_THREAD_ATTR_CMSIS_RTOS_V2 */
 /* USER CODE BEGIN low_level_init Variables Initialization for User BSP */
-
+  uint32_t duplex, speed = 0;
+  int32_t PHYLinkState = 0;
+  ETH_MACConfigTypeDef MACConf = {0};
 /* USER CODE END low_level_init Variables Initialization for User BSP */
   /* Start ETH HAL Init */
 
@@ -267,13 +297,66 @@ static void low_level_init(struct netif *netif)
 /* USER CODE END OS_THREAD_NEW_CMSIS_RTOS_V2 */
 
 /* USER CODE BEGIN low_level_init Code 1 for User BSP */
+  /* Set PHY IO functions */
+  KSZ8081_RegisterBusIO(&KSZ8081, &KSZ8081_IOCtx);
+
+  /* Initialize the KSZ8081 ETH PHY */
+  if(KSZ8081_Init(&KSZ8081) != KSZ8081_STATUS_OK)
+  {
+    netif_set_link_down(netif);
+    netif_set_down(netif);
+    return;
+  }
 
 /* USER CODE END low_level_init Code 1 for User BSP */
 
   if (hal_eth_init_status == HAL_OK)
   {
 /* USER CODE BEGIN low_level_init Code 2 for User BSP */
+	    PHYLinkState = KSZ8081_GetLinkState(&KSZ8081);
 
+	    /* Get link state */
+	    if(PHYLinkState <= KSZ8081_STATUS_LINK_DOWN)
+	    {
+	      netif_set_link_down(netif);
+	      netif_set_down(netif);
+	    }
+	    else
+	    {
+	      switch (PHYLinkState)
+	      {
+	      case KSZ8081_STATUS_100MBITS_FULLDUPLEX:
+	        duplex = ETH_FULLDUPLEX_MODE;
+	        speed = ETH_SPEED_100M;
+	        break;
+	      case KSZ8081_STATUS_100MBITS_HALFDUPLEX:
+	        duplex = ETH_HALFDUPLEX_MODE;
+	        speed = ETH_SPEED_100M;
+	        break;
+	      case KSZ8081_STATUS_10MBITS_FULLDUPLEX:
+	        duplex = ETH_FULLDUPLEX_MODE;
+	        speed = ETH_SPEED_10M;
+	        break;
+	      case KSZ8081_STATUS_10MBITS_HALFDUPLEX:
+	        duplex = ETH_HALFDUPLEX_MODE;
+	        speed = ETH_SPEED_10M;
+	        break;
+	      default:
+	        duplex = ETH_FULLDUPLEX_MODE;
+	        speed = ETH_SPEED_100M;
+	        break;
+	      }
+
+	    /* Get MAC Config MAC */
+	    HAL_ETH_GetMACConfig(&heth, &MACConf);
+	    MACConf.DuplexMode = duplex;
+	    MACConf.Speed = speed;
+	    HAL_ETH_SetMACConfig(&heth, &MACConf);
+
+	    HAL_ETH_Start_IT(&heth);
+	    netif_set_up(netif);
+	    netif_set_link_up(netif);
+	   }
 /* USER CODE END low_level_init Code 2 for User BSP */
 
   }
@@ -285,46 +368,6 @@ static void low_level_init(struct netif *netif)
 
 /* USER CODE BEGIN LOW_LEVEL_INIT */
 	  netif_set_hostname(netif,"ETHCTRLBLINDS");
-
-	  //for MDNS MulticastFramesFilter must be set disabled, all other parameters are default values
-	  ETH_MACInitTypeDef macinit;
-	  macinit.Watchdog = ETH_WATCHDOG_ENABLE;
-	  macinit.Jabber = ETH_JABBER_ENABLE;
-	  macinit.InterFrameGap = ETH_INTERFRAMEGAP_96BIT;
-	  macinit.CarrierSense = ETH_CARRIERSENCE_ENABLE;
-	  macinit.ReceiveOwn = ETH_RECEIVEOWN_ENABLE;
-	  macinit.LoopbackMode = ETH_LOOPBACKMODE_DISABLE;
-	  if(heth.Init.ChecksumMode == ETH_CHECKSUM_BY_HARDWARE)
-	  {
-	    macinit.ChecksumOffload = ETH_CHECKSUMOFFLAOD_ENABLE;
-	  }
-	  else
-	  {
-	    macinit.ChecksumOffload = ETH_CHECKSUMOFFLAOD_DISABLE;
-	  }
-	  macinit.RetryTransmission = ETH_RETRYTRANSMISSION_DISABLE;
-	  macinit.AutomaticPadCRCStrip = ETH_AUTOMATICPADCRCSTRIP_DISABLE;
-	  macinit.BackOffLimit = ETH_BACKOFFLIMIT_10;
-	  macinit.DeferralCheck = ETH_DEFFERRALCHECK_DISABLE;
-	  macinit.ReceiveAll = ETH_RECEIVEAll_DISABLE;
-	  macinit.SourceAddrFilter = ETH_SOURCEADDRFILTER_DISABLE;
-	  macinit.PassControlFrames = ETH_PASSCONTROLFRAMES_BLOCKALL;
-	  macinit.BroadcastFramesReception = ETH_BROADCASTFRAMESRECEPTION_ENABLE;
-	  macinit.DestinationAddrFilter = ETH_DESTINATIONADDRFILTER_NORMAL;
-	  macinit.PromiscuousMode = ETH_PROMISCUOUS_MODE_DISABLE;
-	  macinit.MulticastFramesFilter = ETH_MULTICASTFRAMESFILTER_NONE;
-	  macinit.UnicastFramesFilter = ETH_UNICASTFRAMESFILTER_PERFECT;
-	  macinit.HashTableHigh = 0x0;
-	  macinit.HashTableLow = 0x0;
-	  macinit.PauseTime = 0x0;
-	  macinit.ZeroQuantaPause = ETH_ZEROQUANTAPAUSE_DISABLE;
-	  macinit.PauseLowThreshold = ETH_PAUSELOWTHRESHOLD_MINUS4;
-	  macinit.UnicastPauseFrameDetect = ETH_UNICASTPAUSEFRAMEDETECT_DISABLE;
-	  macinit.ReceiveFlowControl = ETH_RECEIVEFLOWCONTROL_DISABLE;
-	  macinit.TransmitFlowControl = ETH_TRANSMITFLOWCONTROL_DISABLE;
-	  macinit.VLANTagComparison = ETH_VLANTAGCOMPARISON_16BIT;
-	  macinit.VLANTagIdentifier = 0x0;
-	  HAL_ETH_ConfigMAC(&heth, &macinit);
 /* USER CODE END LOW_LEVEL_INIT */
 
 }
@@ -588,7 +631,162 @@ u32_t sys_now(void)
 /* USER CODE END 6 */
 
 /* USER CODE BEGIN PHI IO Functions for User BSP */
+/**
+  * @brief  Initializes the ETH MSP.
+  * @param  ethHandle: ETH handle
+  * @retval None
+  */
 
+void HAL_ETH_MspInit(ETH_HandleTypeDef* ethHandle)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  if(ethHandle->Instance==ETH)
+  {
+    /* Enable Peripheral clock */
+    __HAL_RCC_ETH_CLK_ENABLE();
+
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    /**ETH GPIO Configuration
+    PC1     ------> ETH_MDC
+    PA1     ------> ETH_REF_CLK
+    PA2     ------> ETH_MDIO
+    PA7     ------> ETH_CRS_DV
+    PC4     ------> ETH_RXD0
+    PC5     ------> ETH_RXD1
+    PB11     ------> ETH_TX_EN
+    PB12     ------> ETH_TXD0
+    PB13     ------> ETH_TXD1
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_7;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+    /* Peripheral interrupt init */
+    HAL_NVIC_SetPriority(ETH_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(ETH_IRQn);
+  }
+}
+
+void HAL_ETH_MspDeInit(ETH_HandleTypeDef* ethHandle)
+{
+  if(ethHandle->Instance==ETH)
+  {
+    /* Peripheral clock disable */
+    __HAL_RCC_ETH_CLK_DISABLE();
+
+    /**ETH GPIO Configuration
+    PC1     ------> ETH_MDC
+    PA1     ------> ETH_REF_CLK
+    PA2     ------> ETH_MDIO
+    PA7     ------> ETH_CRS_DV
+    PC4     ------> ETH_RXD0
+    PC5     ------> ETH_RXD1
+    PB11     ------> ETH_TX_EN
+    PB12     ------> ETH_TXD0
+    PB13     ------> ETH_TXD1
+    */
+    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5);
+
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_7);
+
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13);
+
+    /* Peripheral interrupt Deinit*/
+    HAL_NVIC_DisableIRQ(ETH_IRQn);
+
+  }
+}
+/*******************************************************************************
+                       PHI IO Functions
+*******************************************************************************/
+/**
+  * @brief  Initializes the MDIO interface GPIO and clocks.
+  * @param  None
+  * @retval 0 if OK, -1 if ERROR
+  */
+int32_t ETH_PHY_IO_Init(void)
+{
+  /* We assume that MDIO GPIO configuration is already done
+     in the ETH_MspInit() else it should be done here
+  */
+
+  /* Configure the MDIO Clock */
+  HAL_ETH_SetMDIOClockRange(&heth);
+
+  return 0;
+}
+
+/**
+  * @brief  De-Initializes the MDIO interface .
+  * @param  None
+  * @retval 0 if OK, -1 if ERROR
+  */
+int32_t ETH_PHY_IO_DeInit (void)
+{
+  return 0;
+}
+
+/**
+  * @brief  Read a PHY register through the MDIO interface.
+  * @param  DevAddr: PHY port address
+  * @param  RegAddr: PHY register address
+  * @param  pRegVal: pointer to hold the register value
+  * @retval 0 if OK -1 if Error
+  */
+int32_t ETH_PHY_IO_ReadReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t *pRegVal)
+{
+  if(HAL_ETH_ReadPHYRegister(&heth, DevAddr, RegAddr, pRegVal) != HAL_OK)
+  {
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+  * @brief  Write a value to a PHY register through the MDIO interface.
+  * @param  DevAddr: PHY port address
+  * @param  RegAddr: PHY register address
+  * @param  RegVal: Value to be written
+  * @retval 0 if OK -1 if Error
+  */
+int32_t ETH_PHY_IO_WriteReg(uint32_t DevAddr, uint32_t RegAddr, uint32_t RegVal)
+{
+  if(HAL_ETH_WritePHYRegister(&heth, DevAddr, RegAddr, RegVal) != HAL_OK)
+  {
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+  * @brief  Get the time in millisecons used for internal PHY driver process.
+  * @retval Time value
+  */
+int32_t ETH_PHY_IO_GetTick(void)
+{
+  return HAL_GetTick();
+}
 /* USER CODE END PHI IO Functions for User BSP */
 
 /**
@@ -599,14 +797,65 @@ void ethernet_link_thread(void* argument)
 {
 
 /* USER CODE BEGIN ETH link init */
+	  ETH_MACConfigTypeDef MACConf = {0};
+	  int32_t PHYLinkState = 0;
+	  uint32_t linkchanged = 0U, speed = 0U, duplex = 0U;
 
+	  struct netif *netif = (struct netif *) argument;
 /* USER CODE END ETH link init */
 
   for(;;)
   {
 
 /* USER CODE BEGIN ETH link Thread core code for User BSP */
+	  PHYLinkState = KSZ8081_GetLinkState(&KSZ8081);
 
+	  if(netif_is_link_up(netif) && (PHYLinkState <= KSZ8081_STATUS_LINK_DOWN))
+	  {
+	    HAL_ETH_Stop_IT(&heth);
+	    netif_set_down(netif);
+	    netif_set_link_down(netif);
+	  }
+	  else if(!netif_is_link_up(netif) && (PHYLinkState > KSZ8081_STATUS_LINK_DOWN))
+	  {
+	    switch (PHYLinkState)
+	    {
+	    case KSZ8081_STATUS_100MBITS_FULLDUPLEX:
+	      duplex = ETH_FULLDUPLEX_MODE;
+	      speed = ETH_SPEED_100M;
+	      linkchanged = 1;
+	      break;
+	    case KSZ8081_STATUS_100MBITS_HALFDUPLEX:
+	      duplex = ETH_HALFDUPLEX_MODE;
+	      speed = ETH_SPEED_100M;
+	      linkchanged = 1;
+	      break;
+	    case KSZ8081_STATUS_10MBITS_FULLDUPLEX:
+	      duplex = ETH_FULLDUPLEX_MODE;
+	      speed = ETH_SPEED_10M;
+	      linkchanged = 1;
+	      break;
+	    case KSZ8081_STATUS_10MBITS_HALFDUPLEX:
+	      duplex = ETH_HALFDUPLEX_MODE;
+	      speed = ETH_SPEED_10M;
+	      linkchanged = 1;
+	      break;
+	    default:
+	      break;
+	    }
+
+	    if(linkchanged)
+	    {
+	      /* Get MAC Config MAC */
+	      HAL_ETH_GetMACConfig(&heth, &MACConf);
+	      MACConf.DuplexMode = duplex;
+	      MACConf.Speed = speed;
+	      HAL_ETH_SetMACConfig(&heth, &MACConf);
+	      HAL_ETH_Start_IT(&heth);
+	      netif_set_up(netif);
+	      netif_set_link_up(netif);
+	    }
+	  }
 /* USER CODE END ETH link Thread core code for User BSP */
 
     osDelay(100);
@@ -685,17 +934,6 @@ void HAL_ETH_TxFreeCallback(uint32_t * buff)
 }
 
 /* USER CODE BEGIN 8 */
-/**
-  * @brief  This function notify user about link status changement.
-  * @param  netif: the network interface
-  * @retval None
-  */
-__weak void ethernetif_notify_conn_changed(struct netif *netif)
-{
-  /* NOTE : This is function could be implemented in user file
-            when the callback is needed,
-  */
 
-}
 /* USER CODE END 8 */
 

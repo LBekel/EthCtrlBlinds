@@ -55,8 +55,10 @@ ENTRY(Reset_Handler)
 /* Specify the memory areas */
 MEMORY
 {
-RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 320K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 1024K
+RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 320K - 16
+RAMBLIF (xrw)  : ORIGIN = 0x2004FFF0, LENGTH = 16
+DATA (rwx)     : ORIGIN = 0x08018000, LENGTH = 32K + 32K
+FLASH (rx)     : ORIGIN = 0x08040000, LENGTH = 256K + 256K + 256K
 }
 
 /* Highest address of the user mode stack */
@@ -222,6 +224,29 @@ SECTIONS
   } >RAM
   PROVIDE( __non_tls_bss_start = ADDR(.bss) );
 
+  /* Explicit placement for GNU ETH/LwIP sections used in ethernetif.c */
+  .eth (NOLOAD) :
+  {
+    . = ALIGN(32);
+    *(.eth)
+    *(.eth*)
+    . = ALIGN(32);
+  } >RAM
+
+  .RxDescripSection (NOLOAD) :
+  {
+    . = ALIGN(32);
+    KEEP(*(.RxDescripSection))
+    . = ALIGN(32);
+  } >RAM
+
+  .TxDescripSection (NOLOAD) :
+  {
+    . = ALIGN(32);
+    KEEP(*(.TxDescripSection))
+    . = ALIGN(32);
+  } >RAM
+
   PROVIDE( __bss_start = __tbss_start );
   PROVIDE( __bss_size = __bss_end - __bss_start );
 
@@ -235,6 +260,11 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM
+
+  .bl_interface_buffer 0x2004FFF0 (NOLOAD) :
+  {
+    KEEP(*(.bl_interface_buffer))
+  } >RAMBLIF
 
 
 

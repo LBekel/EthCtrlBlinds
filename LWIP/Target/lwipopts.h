@@ -76,7 +76,7 @@
 /*----- Default Value for LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT: 0 ---*/
 #define LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT 1
 /*----- Default Value for F7 devices: 0x20048000 -----*/
-#define LWIP_RAM_HEAP_POINTER 0x20048000
+#define LWIP_RAM_HEAP_POINTER 0x20040000
 /*----- Default Value for MEMP_NUM_PBUF: 16 ---*/
 #define MEMP_NUM_PBUF 64
 /*----- Default Value for MEMP_NUM_TCP_PCB_LISTEN: 8 ---*/
@@ -161,6 +161,8 @@
 #define LWIP_HTTPD_ABORT_ON_CLOSE_MEM_ERROR 1
 /*----- Default Value for LWIP_HTTPD_KILL_OLD_ON_CONNECTIONS_EXCEEDED: 0 ---*/
 #define LWIP_HTTPD_KILL_OLD_ON_CONNECTIONS_EXCEEDED 1
+/*----- Value in opt.h for HTTPD_USE_CUSTOM_FSDATA: 0 -----*/
+#define HTTPD_USE_CUSTOM_FSDATA 1
 /*----- Default Value for LWIP_MDNS: 0 ---*/
 #define LWIP_MDNS 1
 /*----- Default Value for LWIP_MDNS_RESPONDER: 0 ---*/

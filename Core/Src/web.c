@@ -28,7 +28,9 @@ const tCGI SettingCGI = {"/setting.cgi", SettingCGIhandler};
 const tCGI BootloaderCGI = {"/bootloader.cgi", BootloaderCGIhandler};
 const tCGI PositionCGI = {"/position.cgi", PositionCGIhandler};
 
-struct ee_storage_s eemqtttopic;
+struct blind_s *webBlinds_pst;
+
+extern struct ee_storage_s eemqtttopic;
 extern struct ee_storage_s eemqtthost;
 
 #define theCGItableSize 6
@@ -69,6 +71,7 @@ void myCGIinit(void)
 // function to initialize SSI
 void mySSIinit(void)
 {
+    webBlinds_pst = Dio_GetBlinds();
     http_set_ssi_handler(mySSIHandler, (char const**) theSSItags, numSSItags);
 }
 
@@ -85,41 +88,49 @@ const char* BlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *
 
             if(strcmp(pcValue[channel], "up") == 0)
             {
-                blinds[channel].blinddirection = blinddirection_up;
-                blinds[channel].position_target = 0 - 1000;
-                blinds[channel].angle_target = 0;
-                if(blinds[channel].position_function_active == false)
+                webBlinds_pst[channel].blinddirection = blinddirection_up;
+                webBlinds_pst[channel].position_target = 0 - 1000;
+                webBlinds_pst[channel].angle_target = 0;
+                if(webBlinds_pst[channel].position_function_active == false)
                 {
-                    blinds[channel].position_actual = blinds[channel].position_movingtimeup;
+                    webBlinds_pst[channel].position_actual = webBlinds_pst[channel].position_movingtimeup;
                 }
             }
             else if(strcmp(pcValue[channel], "down") == 0)
             {
-                blinds[channel].blinddirection = blinddirection_down;
-                blinds[channel].position_target = blinds[var].position_movingtimeup + 1000;
-                blinds[channel].angle_target = blinds[channel].angle_movingtime;
-                if(blinds[channel].position_function_active == false)
+                webBlinds_pst[channel].blinddirection = blinddirection_down;
+                webBlinds_pst[channel].position_target = webBlinds_pst[var].position_movingtimeup + 1000;
+                webBlinds_pst[channel].angle_target = webBlinds_pst[channel].angle_movingtime;
+                if(webBlinds_pst[channel].position_function_active == false)
                 {
-                    blinds[channel].position_actual = 0;
+                    webBlinds_pst[channel].position_actual = 0;
                 }
             }
             else
             {
-                blinds[channel].blinddirection = blinddirection_off;
+                webBlinds_pst[channel].blinddirection = blinddirection_off;
             }
         }
     }
 
     for(uint8_t var = 0; var < num_blinds; var++)
     {
-        setBlindDirection(&blinds[var]);
-        publish_blinddir_stat(&blinds[var]);
+        setBlindDirection(&webBlinds_pst[var]);
+        publish_blinddir_stat(&webBlinds_pst[var]);
     }
 
     return "/return.html";
 
 }
 
+/**
+ * @brief CGI handler for MQTT settings
+ * @param iIndex unused index of the CGI handler
+ * @param iNumParams number of parameters sent by the client
+ * @param pcParam
+ * @param pcValue
+ * @return
+ */
 const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
 
@@ -130,7 +141,7 @@ const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pc
             sprintf((char*) eemqtttopic.pData, pcValue[var]);
             EE_WriteStorage(&eemqtttopic);
             setMQTTTopic((char*) pcValue[var]);
-            netif_set_hostname(&gnetif,pcValue[var]);
+            netif_set_hostname(netif_default, pcValue[var]);
         }
         if(strcmp(pcParam[var], theSSItags[mqtthost]) == 0)
         {
@@ -161,7 +172,7 @@ const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
             uint8_t channel = 0;
             sscanf(pcValue[var], "%"PRIu8"", &channel);
             channel--;
-            blinds[channel].blindlearn = blindlearn_start;
+            webBlinds_pst[channel].blindlearn = blindlearn_start;
         }
     }
     return "/return.html";
@@ -331,7 +342,7 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     char myStr[LWIP_HTTPD_MAX_TAG_INSERT_LEN];
     if((iIndex >= blind1) && (iIndex <= blind8))
     {
-        if(blinds[iIndex].blinddirection == blinddirection_up)
+        if(webBlinds_pst[iIndex].blinddirection == blinddirection_up)
         {
             sprintf(myStr,
                     "<select name=\"blind%d\" id=\"blind%d\">"
@@ -343,7 +354,7 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
             strcpy(pcInsert, myStr);
             return strlen(myStr);
         }
-        else if(blinds[iIndex].blinddirection == blinddirection_down)
+        else if(webBlinds_pst[iIndex].blinddirection == blinddirection_down)
         {
             sprintf(myStr,
                     "<select name=\"blind%d\" id=\"blind%d\">"
@@ -391,7 +402,7 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     }
     if((iIndex >= raff1) && (iIndex <= raff8))
     {
-        if(blinds[iIndex-raff1].angle_function_active == true)
+        if(webBlinds_pst[iIndex-raff1].angle_function_active == true)
         {
             sprintf(myStr, "<input name=\"raff%d\" type=\"checkbox\" id=\"raff%d\" checked/>",iIndex - raff1 + 1,iIndex - raff1 + 1);
         }
@@ -411,13 +422,13 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     }
     if((iIndex >= pos1) && (iIndex <= pos8))
     {
-        sprintf(myStr, "%ldms", blinds[iIndex - pos1].position_actual);
+        sprintf(myStr, "%ldms", webBlinds_pst[iIndex - pos1].position_actual);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }
     if((iIndex >= angle1) && (iIndex <= angle8))
     {
-        sprintf(myStr, "%ldms", blinds[iIndex - angle1].angle_actual);
+        sprintf(myStr, "%ldms", webBlinds_pst[iIndex - angle1].angle_actual);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }
@@ -480,7 +491,7 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
         uint8_t blind = iIndex - pfunc1 + 1;
         char checked[8];
         char name[10];
-        if(blinds[blind-1].position_function_active)
+        if(webBlinds_pst[blind-1].position_function_active)
         {
             sprintf(checked,"checked");
         }

@@ -41,7 +41,7 @@
 #endif /* WITH_RTOS */
 
 /* USER CODE BEGIN 0 */
- struct netif gnetif;
+
 /* USER CODE END 0 */
 
 /* Global Variables ----------------------------------------------------------*/

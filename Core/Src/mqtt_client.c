@@ -37,6 +37,8 @@ static char mqttname[21];
 static uint8_t inpub_id;
 static uint8_t channel;
 int16_t current;
+struct blind_s *mqttBlinds_pst;
+struct doubleswitch_s *mqttDoubleswitches_pst;
 
 static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection_status_t status);
 static void mqtt_sub_request_cb(void *arg, err_t result);
@@ -167,33 +169,33 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
         {
             if(strncmp((const char*) data, payload_off, len) == 0)
             {
-                blinds[channel].blinddirection = blinddirection_off;
-                setBlindDirection(&blinds[channel]);
-                publish_blinddir_stat(&blinds[channel]);
+                mqttBlinds_pst[channel].blinddirection = blinddirection_off;
+                setBlindDirection(&mqttBlinds_pst[channel]);
+                publish_blinddir_stat(&mqttBlinds_pst[channel]);
             }
             else if(strncmp((const char*) data, payload_up, len) == 0)
             {
-                blinds[channel].blinddirection = blinddirection_up;
-                blinds[channel].position_target = 0 - 1000;
-                blinds[channel].angle_target = 0;
-                if(blinds[channel].position_function_active == false)
+                mqttBlinds_pst[channel].blinddirection = blinddirection_up;
+                mqttBlinds_pst[channel].position_target = 0 - 1000;
+                mqttBlinds_pst[channel].angle_target = 0;
+                if(mqttBlinds_pst[channel].position_function_active == false)
                 {
-                    blinds[channel].position_actual = blinds[channel].position_movingtimeup;
+                    mqttBlinds_pst[channel].position_actual = mqttBlinds_pst[channel].position_movingtimeup;
                 }
-                setBlindDirection(&blinds[channel]);
-                publish_blinddir_stat(&blinds[channel]);
+                setBlindDirection(&mqttBlinds_pst[channel]);
+                publish_blinddir_stat(&mqttBlinds_pst[channel]);
             }
             else if(strncmp((const char*) data, payload_down, len) == 0)
             {
-                blinds[channel].blinddirection = blinddirection_down;
-                blinds[channel].position_target = blinds[channel].position_movingtimeup + 1000;
-                blinds[channel].angle_target = blinds[channel].angle_movingtime;
-                if(blinds[channel].position_function_active == false)
+                mqttBlinds_pst[channel].blinddirection = blinddirection_down;
+                mqttBlinds_pst[channel].position_target = mqttBlinds_pst[channel].position_movingtimeup + 1000;
+                mqttBlinds_pst[channel].angle_target = mqttBlinds_pst[channel].angle_movingtime;
+                if(mqttBlinds_pst[channel].position_function_active == false)
                 {
-                    blinds[channel].position_actual = 0;
+                    mqttBlinds_pst[channel].position_actual = 0;
                 }
-                setBlindDirection(&blinds[channel]);
-                publish_blinddir_stat(&blinds[channel]);
+                setBlindDirection(&mqttBlinds_pst[channel]);
+                publish_blinddir_stat(&mqttBlinds_pst[channel]);
             }
             else
             {
@@ -205,46 +207,46 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 
                 	if(percent>=100)
                 	{
-                		blinds[channel].position_target = blinds[channel].position_movingtimeup + 1000;
-                        if(blinds[channel].position_function_active == false)
+                		mqttBlinds_pst[channel].position_target = mqttBlinds_pst[channel].position_movingtimeup + 1000;
+                        if(mqttBlinds_pst[channel].position_function_active == false)
                         {
-                            blinds[channel].position_actual = blinds[channel].position_movingtimeup;
+                            mqttBlinds_pst[channel].position_actual = mqttBlinds_pst[channel].position_movingtimeup;
                         }
                 	}
                 	else if(percent<=0)
                 	{
-                		blinds[channel].position_target = 0 - 1000;
-                        if(blinds[channel].position_function_active == false)
+                		mqttBlinds_pst[channel].position_target = 0 - 1000;
+                        if(mqttBlinds_pst[channel].position_function_active == false)
                         {
-                            blinds[channel].position_actual = 0;
+                            mqttBlinds_pst[channel].position_actual = 0;
                         }
                 	}
                 	else
                 	{
-                	    calc_position(percent,&blinds[channel]);
+                	    calc_position(percent,&mqttBlinds_pst[channel]);
                 	}
 
 
-                    if(blinds[channel].position_actual > blinds[channel].position_target)
+                    if(mqttBlinds_pst[channel].position_actual > mqttBlinds_pst[channel].position_target)
                     {
-                        blinds[channel].blinddirection = blinddirection_up;
-                        if(blinds[channel].position_function_active == false)
+                        mqttBlinds_pst[channel].blinddirection = blinddirection_up;
+                        if(mqttBlinds_pst[channel].position_function_active == false)
                         {
-                            blinds[channel].position_actual = blinds[channel].position_movingtimeup;
+                            mqttBlinds_pst[channel].position_actual = mqttBlinds_pst[channel].position_movingtimeup;
                         }
-                        blinds[channel].angle_target = 0;
+                        mqttBlinds_pst[channel].angle_target = 0;
                     }
                     else
                     {
-                        blinds[channel].blinddirection = blinddirection_down;
-                        if(blinds[channel].position_function_active == false)
+                        mqttBlinds_pst[channel].blinddirection = blinddirection_down;
+                        if(mqttBlinds_pst[channel].position_function_active == false)
                         {
-                            blinds[channel].position_actual = 0;
+                            mqttBlinds_pst[channel].position_actual = 0;
                         }
-                        blinds[channel].angle_target = blinds[channel].angle_movingtime;
+                        mqttBlinds_pst[channel].angle_target = mqttBlinds_pst[channel].angle_movingtime;
                     }
-                    setBlindDirection(&blinds[channel]);
-                    publish_blinddir_stat(&blinds[channel]);
+                    setBlindDirection(&mqttBlinds_pst[channel]);
+                    publish_blinddir_stat(&mqttBlinds_pst[channel]);
                 }
             }
         }
@@ -262,23 +264,23 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
                 percent = 0;
             }
 
-            blinds[channel].angle_target = (double)blinds[channel].angle_movingtime/(double)100*percent;
-            //start only moving if blinds are stopped
-            if(blinds[channel].blinddirection == blinddirection_off)
+            mqttBlinds_pst[channel].angle_target = (double)mqttBlinds_pst[channel].angle_movingtime/(double)100*percent;
+            //start only moving if mqttBlinds_pst are stopped
+            if(mqttBlinds_pst[channel].blinddirection == blinddirection_off)
             {
-                if(blinds[channel].angle_actual < blinds[channel].angle_target)
+                if(mqttBlinds_pst[channel].angle_actual < mqttBlinds_pst[channel].angle_target)
                 {
-                    blinds[channel].blinddirection = blinddirection_angle_down;
+                    mqttBlinds_pst[channel].blinddirection = blinddirection_angle_down;
                 }
-                else if(blinds[channel].angle_actual > blinds[channel].angle_target)
+                else if(mqttBlinds_pst[channel].angle_actual > mqttBlinds_pst[channel].angle_target)
                 {
-                    blinds[channel].blinddirection = blinddirection_angle_up;
+                    mqttBlinds_pst[channel].blinddirection = blinddirection_angle_up;
                 }
                 else
                 {
-                    blinds[channel].blinddirection = blinddirection_off;
+                    mqttBlinds_pst[channel].blinddirection = blinddirection_off;
                 }
-                setBlindDirection(&blinds[channel]);
+                setBlindDirection(&mqttBlinds_pst[channel]);
             }
         }
         else
@@ -298,7 +300,7 @@ void publish_doubleswitch_stats(void)
     {
         for(uint8_t var = 0; var < num_doubleswitches; ++var)
         {
-            publish_doubleswitch_stat(&doubleswitches[var]);
+            publish_doubleswitch_stat(&mqttDoubleswitches_pst[var]);
         }
     }
 }
@@ -340,7 +342,7 @@ void publish_blinddir_stats(void)
     {
         for(uint8_t var = 0; var < num_blinds; ++var)
         {
-            publish_blinddir_stat(&blinds[var]);
+            publish_blinddir_stat(&mqttBlinds_pst[var]);
         }
     }
 }
@@ -381,7 +383,7 @@ void publish_blindpos_stats(void)
     {
         for(uint8_t var = 0; var < num_blinds; ++var)
         {
-            publish_blindpos_stat(&blinds[var]);
+            publish_blindpos_stat(&mqttBlinds_pst[var]);
         }
     }
 }
@@ -423,7 +425,7 @@ void publish_blindangle_stats(void)
     {
         for(uint8_t var = 0; var < num_blinds; ++var)
         {
-            publish_blindangle_stat(&blinds[var]);
+            publish_blindangle_stat(&mqttBlinds_pst[var]);
         }
     }
 }
@@ -476,7 +478,7 @@ void publish_blinddir_cmds(void)
     {
         for(uint8_t var = 0; var < num_blinds; ++var)
         {
-            publish_blinddir_cmd(&blinds[var]);
+            publish_blinddir_cmd(&mqttBlinds_pst[var]);
         }
     }
 }
@@ -518,7 +520,7 @@ void publish_blindangle_cmds(void)
     {
         for(uint8_t var = 0; var < num_blinds; ++var)
         {
-            publish_blindangle_cmd(&blinds[var]);
+            publish_blindangle_cmd(&mqttBlinds_pst[var]);
         }
     }
 }
@@ -550,15 +552,15 @@ void publish_ip_mac(void)
         char topic[strlen(mqttname) + 10];
         sprintf(topic, IPTELE, mqttname);
         char ip[16];
-        sprintf(ip, "%s", ipaddr_ntoa(&gnetif.ip_addr));
+        sprintf(ip, "%s", ipaddr_ntoa(&netif_default->ip_addr));
         err = mqtt_publish(&client, topic, ip, strlen(ip), qos, retain, NULL, NULL);
         if(err != ERR_OK)
             printf("ERROR: publish_ip %d\r\n", err);
 
         sprintf(topic, MACTELE, mqttname);
         char mac[13];
-        sprintf(mac, "%02x%02x%02x%02x%02x%02x", gnetif.hwaddr[0], gnetif.hwaddr[1], gnetif.hwaddr[2], gnetif.hwaddr[3],
-                gnetif.hwaddr[4], gnetif.hwaddr[5]);
+        sprintf(mac, "%02x%02x%02x%02x%02x%02x", netif_default->hwaddr[0], netif_default->hwaddr[1], netif_default->hwaddr[2], netif_default->hwaddr[3],
+                netif_default->hwaddr[4], netif_default->hwaddr[5]);
 
         err = mqtt_publish(&client, topic, mac, strlen(mac), qos, retain, NULL, NULL);
 
@@ -597,7 +599,7 @@ void subscribe_blinddir_cmd(void)
     for(uint8_t var = 0; var < num_blinds; ++var)
     {
         char topic[sizeof(mqttname) + 17];
-        sprintf(topic, BLINDDIRCMND"%02d", mqttname, blinds[var].channel); //build Topic
+        sprintf(topic, BLINDDIRCMND"%02d", mqttname, mqttBlinds_pst[var].channel); //build Topic
         err = mqtt_subscribe(&client, topic, 1, mqtt_sub_request_cb, NULL);
         if(err != ERR_OK)
             printf("ERROR: subscribe_blinddir_cmd ch%d: %d\r\n", var+1, err);
@@ -610,7 +612,7 @@ void subscribe_blindpos_cmd(void)
     for(uint8_t var = 0; var < num_blinds; ++var)
     {
         char topic[sizeof(mqttname) + 17];
-        sprintf(topic, BLINDPOSCMND"%02d", mqttname, blinds[var].channel); //build Topic
+        sprintf(topic, BLINDPOSCMND"%02d", mqttname, mqttBlinds_pst[var].channel); //build Topic
         err = mqtt_subscribe(&client, topic, 1, mqtt_sub_request_cb, NULL);
         if(err != ERR_OK)
             printf("ERROR: subscribe_blindpos_cmd ch%d: %d\r\n", var+1,  err);
@@ -623,7 +625,7 @@ void subscribe_blindangle_cmd(void)
     for(uint8_t var = 0; var < num_blinds; ++var)
     {
         char topic[sizeof(mqttname) + 17];
-        sprintf(topic, BLINDANGCMND"%02d", mqttname, blinds[var].channel); //build Topic
+        sprintf(topic, BLINDANGCMND"%02d", mqttname, mqttBlinds_pst[var].channel); //build Topic
         err = mqtt_subscribe(&client, topic, 1, mqtt_sub_request_cb, NULL);
         if(err != ERR_OK)
             printf("ERROR: subscribe_blindangle_cmd ch%d: %d\r\n", var+1,  err);
@@ -641,10 +643,13 @@ static void mqtt_pub_request_cb(void *arg, err_t result)
 void StartmqttTask(void *argument)
 {
     printf("StartmqttTask\r\n");
+
+    mqttBlinds_pst = Dio_GetBlinds();
+    mqttDoubleswitches_pst = Dio_GetDoubleswitches();
     /* Infinite loop */
     for(;;)
     {
-        if(gnetif.ip_addr.addr != 0) //we need a IP Address to connect
+        if(netif_default->ip_addr.addr != 0) //we need a IP Address to connect
         {
 
             if(mqtt_client_is_connected(&client)) /* while connected, publish */

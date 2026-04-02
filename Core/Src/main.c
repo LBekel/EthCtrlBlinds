@@ -696,7 +696,7 @@ void StartDefaultTask(void *argument)
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
   printf("StartDefaultTask\r\n");
-  netif_set_hostname(&gnetif,mqtttopic);
+  // netif_set_hostname(&gnetif,mqtttopic);
   httpd_init();
   // initializing CGI  [= CGI #7 =]
   myCGIinit();

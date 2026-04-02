@@ -11,7 +11,11 @@
 #include <stdbool.h>
 #include "math.h"
 
-uint16_t Relay_Pins[] = {
+struct blind_s blinds[num_blinds];
+struct doubleswitch_s doubleswitches[num_doubleswitches];
+
+
+uint16_t Relay_Pins[num_relay_ch] = {
 OUT01DOWN_Pin, OUT01UP_Pin,
 OUT02DOWN_Pin, OUT02UP_Pin,
 OUT03DOWN_Pin, OUT03UP_Pin,
@@ -21,7 +25,7 @@ OUT06DOWN_Pin, OUT06UP_Pin,
 OUT07DOWN_Pin, OUT07UP_Pin,
 OUT08DOWN_Pin, OUT08UP_Pin};
 
-GPIO_TypeDef *Relay_Ports[] = {
+GPIO_TypeDef *Relay_Ports[num_relay_ch] = {
 OUT01DOWN_GPIO_Port, OUT01UP_GPIO_Port,
 OUT02DOWN_GPIO_Port, OUT02UP_GPIO_Port,
 OUT03DOWN_GPIO_Port, OUT03UP_GPIO_Port,
@@ -31,13 +35,13 @@ OUT06DOWN_GPIO_Port, OUT06UP_GPIO_Port,
 OUT07DOWN_GPIO_Port, OUT07UP_GPIO_Port,
 OUT08DOWN_GPIO_Port, OUT08UP_GPIO_Port};
 
-uint16_t Input_Pins[] = {
+uint16_t Input_Pins[num_input_ch] = {
 IN01_Pin, IN02_Pin, IN03_Pin, IN04_Pin, IN05_Pin,
 IN06_Pin, IN07_Pin, IN08_Pin, IN09_Pin, IN10_Pin,
 IN11_Pin, IN12_Pin, IN13_Pin, IN14_Pin, IN15_Pin,
 IN16_Pin, IN17_Pin, IN18_Pin};
 
-GPIO_TypeDef *Input_Ports[] = {
+GPIO_TypeDef *Input_Ports[num_input_ch] = {
 IN01_GPIO_Port, IN02_GPIO_Port, IN03_GPIO_Port, IN04_GPIO_Port,
 IN05_GPIO_Port, IN06_GPIO_Port, IN07_GPIO_Port, IN08_GPIO_Port,
 IN09_GPIO_Port, IN10_GPIO_Port, IN11_GPIO_Port, IN12_GPIO_Port,
@@ -70,7 +74,6 @@ void transferDoubleswitch2Blind(uint8_t inputchannel);
 void publishCentralDoubleswitchTopic(void);
 GPIO_PinState GPIO_Read_Up_Debounced(struct doubleswitch_s *doubleswitch);
 GPIO_PinState GPIO_Read_Down_Debounced(struct doubleswitch_s *doubleswitch);
-
 
 void initBlinds()
 {
@@ -885,4 +888,15 @@ void calc_position(uint8_t percent, struct blind_s *blind)
     percent = xs[i] + (percent - ys[i]) * dx / dy;
 
     blind->position_target = (double)blind->position_movingtimeup/(double)100*percent;
+}
+
+
+struct blind_s *Dio_GetBlinds(void)
+{
+    return blinds;
+}
+
+struct doubleswitch_s *Dio_GetDoubleswitches(void)
+{
+    return doubleswitches;
 }
