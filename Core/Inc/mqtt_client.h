@@ -21,6 +21,7 @@ typedef enum {
 }inpub_t;
 
 void StartmqttTask(void *argument);
+void publish_ha_discovery(void);
 void publish_doubleswitch_stats(void);
 void publish_doubleswitch_stat(struct doubleswitch_s *doubleswitch);
 void publish_ip_mac(void);
