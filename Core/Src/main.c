@@ -26,7 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include  <errno.h>
 #include  <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
-#include "mqtt_client.h"
+#include "MqttClient.h"
 #include "lwip/apps/httpd.h"
 #include "string.h"
 #include <stdio.h>
@@ -154,7 +154,7 @@ static void MX_ADC1_Init(void);
 static void MX_UART8_Init(void);
 static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void *argument);
-void StartmqttTask(void *argument);
+void MqttClient_StartTask(void *argument);
 void StartScanInputTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -238,13 +238,13 @@ int main(void)
         {
             EE_WriteStorage(&eemqtttopic); //Write default to flash
         }
-        setMQTTTopic((char*) eemqtttopic.pData);
+        MqttClient_SetMQTTTopic((char*) eemqtttopic.pData);
 
         if(EE_ReadStorage(&eemqtthost))
         {
             EE_WriteStorage(&eemqtthost); //Write default to flash
         }
-        setMQTTHost((ip_addr_t*) eemqtthost.pData);
+        MqttClient_SetMQTTHost((ip_addr_t*) eemqtthost.pData);
 
         if(EE_ReadStorage(&eeblindmovingtimeup))
         {
@@ -329,7 +329,7 @@ int main(void)
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* creation of mqttTask */
-  mqttTaskHandle = osThreadNew(StartmqttTask, NULL, &mqttTask_attributes);
+  mqttTaskHandle = osThreadNew(MqttClient_StartTask, NULL, &mqttTask_attributes);
 
   /* creation of scanInputTask */
   scanInputTaskHandle = osThreadNew(StartScanInputTask, (void*) &hadc1, &scanInputTask_attributes);
@@ -724,7 +724,7 @@ void StartDefaultTask(void *argument)
 * @retval None
 */
 /* USER CODE END Header_StartmqttTask */
-__weak void StartmqttTask(void *argument)
+__weak void MqttClient_StartTask(void *argument)
 {
   /* USER CODE BEGIN StartmqttTask */
   /* Infinite loop */

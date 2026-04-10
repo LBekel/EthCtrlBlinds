@@ -6,7 +6,7 @@
  */
 
 #include "main.h"
-#include "mqtt_client.h"
+#include "MqttClient.h"
 #include "lwip/apps/httpd.h"
 #include "string.h"
 #include <stdio.h>
@@ -82,8 +82,8 @@ const char* BlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *
     {
         if(strncmp(pcParam[var], "blind", 5) == 0)
         {
-            uint8_t channel = 0;
-            sscanf(pcParam[var]+5, "%"PRIu8"", &channel);
+            uint16_t channel = 0;
+            sscanf(pcParam[var]+5, "%"SCNu16"", &channel);
             channel--;
 
             if(strcmp(pcValue[channel], "up") == 0)
@@ -116,7 +116,7 @@ const char* BlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *
     for(uint8_t var = 0; var < num_blinds; var++)
     {
         setBlindDirection(&webBlinds_pst[var]);
-        publish_blinddir_stat(&webBlinds_pst[var]);
+        MqttClient_PublishBlindDirStat(&webBlinds_pst[var]);
     }
 
     return "/return.html";
@@ -140,17 +140,16 @@ const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pc
         {
             sprintf((char*) eemqtttopic.pData, pcValue[var]);
             EE_WriteStorage(&eemqtttopic);
-            setMQTTTopic((char*) pcValue[var]);
+            MqttClient_SetMQTTTopic((char*) pcValue[var]);
             netif_set_hostname(netif_default, pcValue[var]);
         }
         if(strcmp(pcParam[var], theSSItags[mqtthost]) == 0)
         {
             ip_addr_t mqtt_host_addr;
             ipaddr_aton((char* )pcValue[var], &mqtt_host_addr);
-            //printf("New Host IP Address: %s\r\n", ipaddr_ntoa(&mqtt_host_addr));
             memcpy(eemqtthost.pData, &mqtt_host_addr, 4);
             EE_WriteStorage(&eemqtthost);
-            setMQTTHost(&mqtt_host_addr);
+            MqttClient_SetMQTTHost(&mqtt_host_addr);
         }
     }
     return "/return.html";
@@ -162,15 +161,15 @@ const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
     {
         if(strcmp(pcParam[var], theSSItags[current]) == 0)
         {
-            sscanf(pcValue[var], "%"PRIu16"", &currentthreshold);
+            sscanf(pcValue[var], "%"SCNu16"", &currentthreshold);
             EE_WriteStorage(&eecurrentthreshold);
             printf("Current threshold: %d\r\n", currentthreshold);
             setBlindcurrentThreshold(currentthreshold);
         }
         if(strncmp(pcParam[var], "blind", 5) == 0)
         {
-            uint8_t channel = 0;
-            sscanf(pcValue[var], "%"PRIu8"", &channel);
+            uint16_t channel = 0;
+            sscanf(pcValue[var], "%"SCNu16"", &channel);
             channel--;
             webBlinds_pst[channel].blindlearn = blindlearn_start;
         }
@@ -183,20 +182,20 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
     bool temp_raffstore = false;
     uint16_t temp_blindinput = 0;
     bool temp_posfunc = false;
-    uint8_t inputchannel = 0;
-    uint8_t blindchannel = 0;
+    uint16_t inputchannel = 0;
+    uint16_t blindchannel = 0;
 
     for(uint8_t var = 0; var < iNumParams; var++)
     {
-        uint8_t value8 = 0;
+        uint16_t value8 = 0;
         uint16_t value16 = 0;
         uint32_t value32 = 0;
 
         if(strncmp(pcParam[var], theSSItags[input1],5) == 0)
         {
-            sscanf(pcParam[var]+7, "%"PRIu8"", &blindchannel);
+            sscanf(pcParam[var]+7, "%"SCNu16"", &blindchannel);
             blindchannel--;
-            sscanf(pcParam[var]+5, "%"PRIu8"", &inputchannel);
+            sscanf(pcParam[var]+5, "%"SCNu16"", &inputchannel);
             inputchannel--;
             temp_blindinput += 1<<inputchannel;
             continue;
@@ -204,9 +203,9 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
 
         if(strncmp(pcParam[var], theSSItags[timeup1], 6) == 0)
         {
-            sscanf(pcParam[var]+6, "%"PRIu8"", &blindchannel);
+            sscanf(pcParam[var]+6, "%"SCNu16"", &blindchannel);
             blindchannel--;
-            sscanf(pcValue[var], "%"PRIu32"", &value32);
+            sscanf(pcValue[var], "%"SCNu32"", &value32);
             //only write to eeprom if value has changed
             if (value32!=blindmovingtimeup[blindchannel])
             {
@@ -219,9 +218,9 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
 
         if(strncmp(pcParam[var], theSSItags[timedo1], 6) == 0)
         {
-            sscanf(pcParam[var]+6, "%"PRIu8"", &blindchannel);
+            sscanf(pcParam[var]+6, "%"SCNu16"", &blindchannel);
             blindchannel--;
-            sscanf(pcValue[var], "%"PRIu32"", &value32);
+            sscanf(pcValue[var], "%"SCNu32"", &value32);
             //only write to eeprom if value has changed
             if (value32!=blindmovingtimedown[blindchannel])
             {
@@ -233,9 +232,9 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
         }
         if(strncmp(pcParam[var], theSSItags[per50_1], 5) == 0)
         {
-            sscanf(pcParam[var]+6, "%"PRIu8"", &blindchannel);
+            sscanf(pcParam[var]+6, "%"SCNu16"", &blindchannel);
             blindchannel--;
-            sscanf(pcValue[var], "%2"PRIu8"", &value8);
+            sscanf(pcValue[var], "%2"SCNu16"", &value8);
             if (value8!=blindpos50[blindchannel])
             {
                 blindpos50[blindchannel] = value8;
@@ -247,9 +246,9 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
 
         if(strncmp(pcParam[var], theSSItags[rafftim1], 7) == 0)
         {
-            sscanf(pcParam[var]+7, "%"PRIu8"", &blindchannel);
+            sscanf(pcParam[var]+7, "%"SCNu16"", &blindchannel);
             blindchannel--;
-            sscanf(pcValue[var], "%"PRIu16"", &value16);
+            sscanf(pcValue[var], "%"SCNu16"", &value16);
             //only write to eeprom if value has changed
             if (value16!=raffmovingtime[blindchannel])
             {
@@ -262,7 +261,7 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
 
         if(strncmp(pcParam[var], theSSItags[raff1], 4) == 0)
         {
-            sscanf(pcParam[var]+4, "%"PRIu8"", &blindchannel);
+            sscanf(pcParam[var]+4, "%"SCNu16"", &blindchannel);
             blindchannel--;
             temp_raffstore = true;
             continue;
@@ -270,7 +269,7 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
 
         if(strncmp(pcParam[var], theSSItags[pfunc1], 5) == 0)
         {
-            sscanf(pcParam[var]+5, "%"PRIu8"", &blindchannel); //
+            sscanf(pcParam[var]+5, "%"SCNu16"", &blindchannel); //
             blindchannel--;
             temp_posfunc = true;
             continue;
@@ -314,22 +313,22 @@ const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], ch
 
 const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
-    static uint8_t channel = 0;
-    uint8_t value = 0;
+    static uint16_t channel = 0;
+    uint16_t value = 0;
     for(uint8_t var = 0; var < iNumParams; var++)
     {
         if(strncmp(pcParam[var], theSSItags[per50_1],5) == 0)
         {
-            sscanf(pcParam[var]+6, "%"PRIu8"", &channel);
+            sscanf(pcParam[var]+6, "%"SCNu16"", &channel);
             channel--;
-            sscanf(pcValue[var], "%2"PRIu8"", &value);
+            sscanf(pcValue[var], "%2"SCNu16"", &value);
             blindpos50[channel] = value;
             EE_WriteStorage(&eeblindpos50);
             setBlindsPos50((uint8_t*)&blindpos50);
         }
         if(strncmp(pcParam[var], "blind", 5) == 0)
         {
-            sscanf(pcValue[var], "%1"PRIu8"", &channel);
+            sscanf(pcValue[var], "%1"SCNu16"", &channel);
             channel--;
         }
     }
@@ -435,7 +434,7 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     if(iIndex == mqtttopic)
     {
         char tempTopic[27];
-        getMQTTTopic(tempTopic);
+        MqttClient_GetMQTTTopic(tempTopic);
         sprintf(myStr, "<input value=\"%s\" name=\"mqtttopic\" type=\"text\" id=\"mqtttopic\" size=\"25\" maxlength=\"10\">", tempTopic);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
@@ -443,7 +442,7 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     if(iIndex == mqtthost)
     {
         ip_addr_t mqtt_host_addr;
-        getMQTTHost(&mqtt_host_addr);
+        MqttClient_GetMQTTHost(&mqtt_host_addr);
         sprintf(myStr, "<input value=\"%s\" name=\"mqtthost\" type=\"text\" id=\"mqtthost\" size=\"25\">",
                 ipaddr_ntoa(&mqtt_host_addr));
         strcpy(pcInsert, myStr);

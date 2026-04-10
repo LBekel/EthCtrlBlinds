@@ -44,14 +44,14 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
-    Core/Src/dio.c
-    Core/Src/web.c
-    Core/Src/eeprom.c
-    Core/Src/jumpcode.c
-    Core/Src/mqtt_client.c
-    LWIP/Target/md5.c
-    Core/Src/PHY_KSZ8081RNA.c
+        # Add user sources here
+        Core/Src/dio.c
+        Core/Src/web.c
+        Core/Src/eeprom.c
+        Core/Src/jumpcode.c
+        Core/Src/MqttClient.c
+        LWIP/Target/md5.c
+        Core/Src/PHY_KSZ8081RNA.c
 )
 
 # Add include paths
