@@ -26,7 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include  <errno.h>
 #include  <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
-#include "mqtt_client.h"
+#include "MqttClient.h"
 #include "lwip/apps/httpd.h"
 #include "string.h"
 #include <stdio.h>
@@ -149,12 +149,12 @@ uint16_t VirtAddVarTab[74];
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_UART8_Init(void);
 static void MX_USART1_UART_Init(void);
-static void MX_DMA_Init(void);
 void StartDefaultTask(void *argument);
-void StartmqttTask(void *argument);
+void MqttClient_StartTask(void *argument);
 void StartScanInputTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -189,8 +189,11 @@ int _write(int file, char *data, int len)
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
   /* USER CODE END 1 */
+
+  /* Enable the CPU Cache */
 
   /* Enable I-Cache---------------------------------------------------------*/
   SCB_EnableICache();
@@ -213,10 +216,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_ADC1_Init();
   MX_UART8_Init();
   MX_USART1_UART_Init();
-  MX_DMA_Init();
   /* USER CODE BEGIN 2 */
   printf("Start Application\r\n");
   printf("compiled " __DATE__ " " __TIME__ "\r\n");
@@ -235,13 +238,13 @@ int main(void)
         {
             EE_WriteStorage(&eemqtttopic); //Write default to flash
         }
-        setMQTTTopic((char*) eemqtttopic.pData);
+        MqttClient_SetMQTTTopic((char*) eemqtttopic.pData);
 
         if(EE_ReadStorage(&eemqtthost))
         {
             EE_WriteStorage(&eemqtthost); //Write default to flash
         }
-        setMQTTHost((ip_addr_t*) eemqtthost.pData);
+        MqttClient_SetMQTTHost((ip_addr_t*) eemqtthost.pData);
 
         if(EE_ReadStorage(&eeblindmovingtimeup))
         {
@@ -326,7 +329,7 @@ int main(void)
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* creation of mqttTask */
-  mqttTaskHandle = osThreadNew(StartmqttTask, NULL, &mqttTask_attributes);
+  mqttTaskHandle = osThreadNew(MqttClient_StartTask, NULL, &mqttTask_attributes);
 
   /* creation of scanInputTask */
   scanInputTaskHandle = osThreadNew(StartScanInputTask, (void*) &hadc1, &scanInputTask_attributes);
@@ -343,6 +346,7 @@ int main(void)
   osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -362,12 +366,12 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
@@ -384,12 +388,14 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
   /** Activate the Over-Drive mode
   */
   if (HAL_PWREx_EnableOverDrive() != HAL_OK)
   {
     Error_Handler();
   }
+
   /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
@@ -400,13 +406,6 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_UART8;
-  PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
-  PeriphClkInitStruct.Uart8ClockSelection = RCC_UART8CLKSOURCE_PCLK1;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
   }
@@ -432,6 +431,7 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 1 */
 
   /* USER CODE END ADC1_Init 1 */
+
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
@@ -450,6 +450,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
   sConfig.Channel = ADC_CHANNEL_0;
@@ -559,6 +560,9 @@ static void MX_DMA_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -655,6 +659,9 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -689,7 +696,7 @@ void StartDefaultTask(void *argument)
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
   printf("StartDefaultTask\r\n");
-  netif_set_hostname(&gnetif,mqtttopic);
+  // netif_set_hostname(&gnetif,mqtttopic);
   httpd_init();
   // initializing CGI  [= CGI #7 =]
   myCGIinit();
@@ -717,7 +724,7 @@ void StartDefaultTask(void *argument)
 * @retval None
 */
 /* USER CODE END Header_StartmqttTask */
-__weak void StartmqttTask(void *argument)
+__weak void MqttClient_StartTask(void *argument)
 {
   /* USER CODE BEGIN StartmqttTask */
   /* Infinite loop */
@@ -759,7 +766,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM1) {
+  if (htim->Instance == TIM1)
+  {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -786,8 +794,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
@@ -803,5 +810,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

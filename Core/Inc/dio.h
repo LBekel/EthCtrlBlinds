@@ -11,6 +11,9 @@
 #include <stdbool.h>
 #include "FreeRTOS.h"
 
+#define num_blinds 8
+#define num_doubleswitches 9
+
 typedef enum {
 	blinddirection_off,
 	blinddirection_up,
@@ -67,7 +70,7 @@ struct doubleswitch_s{
 	float downdebounce;
 	uint16_t upInput_Pin;
 	GPIO_TypeDef * upInput_Port;
-    float updebounce;
+	float updebounce;
 	inputdirection_t inputdirection;
 	bool changed;
 	uint8_t angle_target; //%
@@ -110,15 +113,7 @@ struct doubleswitch_s{
 
 #define num_relay_ch 16
 #define num_input_ch 18
-#define num_blinds 8
-#define num_doubleswitches 9
-struct blind_s blinds[num_blinds];
-struct doubleswitch_s doubleswitches[num_doubleswitches];
 
-uint16_t Relay_Pins[num_relay_ch];
-GPIO_TypeDef * Relay_Ports[num_relay_ch];
-uint16_t Input_Pins[num_input_ch];
-GPIO_TypeDef * Input_Ports[num_input_ch];
 
 void initBlinds(void);
 void setBlindsMovingTimeUp(uint32_t * blindsmovingtime);
@@ -136,5 +131,7 @@ uint16_t getBlindcurrentThreshold(void);
 void StartScanInputsTask(void *argument);
 uint8_t calc_real_position(struct blind_s *blind);
 void calc_position(uint8_t percent, struct blind_s *blind);
+struct blind_s *Dio_GetBlinds(void);
+struct doubleswitch_s *Dio_GetDoubleswitches(void);
 
 #endif /* INC_DIO_H_ */

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 	<head>
 		<title>ETHERNET CONTROL BLINDS</title>
 		<meta charset="utf-8" />
@@ -72,8 +72,8 @@
 					  <tr height="30px">
 					    <td><input value="Move" type="submit"></td>
 					  </tr>
-					</form>
 					</table>
+					</form>
 				</td>
 				<td>
 					<table>
@@ -111,7 +111,7 @@
 					      <td><input value="Write Settings" type="submit"></td>
 						</tr>
 						</form>
-					  </tr>
+
 					    <form method="get" action="/setting.cgi">
 					    <tr height="30px">
 						  <td><!--#pfunc2--></td>
@@ -124,7 +124,7 @@
 					      <td><input value="Write Settings" type="submit"></td>
 						</tr>
 						</form>
-					  </tr>
+
 					    <form method="get" action="/setting.cgi">
 					    <tr height="30px">
 						  <td><!--#pfunc3--></td>
@@ -137,7 +137,7 @@
 					      <td><input value="Write Settings" type="submit"></td>
 						</tr>
 						</form>
-					  </tr>
+
 					    <form method="get" action="/setting.cgi">
 					    <tr height="30px">
 						  <td><!--#pfunc4--></td>
@@ -150,7 +150,7 @@
 					      <td><input value="Write Settings" type="submit"></td>
 						</tr>
 						</form>
-					  </tr>
+
 					    <form method="get" action="/setting.cgi">
 					    <tr height="30px">
 						  <td><!--#pfunc5--></td>
@@ -163,7 +163,7 @@
 					      <td><input value="Write Settings" type="submit"></td>
 						</tr>
 						</form>
-					  </tr>
+
 					    <form method="get" action="/setting.cgi">
 					    <tr height="30px">
 						  <td><!--#pfunc6--></td>
@@ -176,7 +176,7 @@
 					      <td><input value="Write Settings" type="submit"></td>
 						</tr>
 						</form>
-					  </tr>
+
 					    <form method="get" action="/setting.cgi">
 					    <tr height="30px">
 						  <td><!--#pfunc7--></td>
@@ -189,7 +189,7 @@
 					      <td><input value="Write Settings" type="submit"></td>
 						</tr>
 						</form>
-					  </tr>
+
 					    <form method="get" action="/setting.cgi">
 					    <tr height="30px">
 						  <td><!--#pfunc8--></td>

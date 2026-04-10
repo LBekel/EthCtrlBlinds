@@ -7,11 +7,15 @@
 
 #include "main.h"
 #include "dio.h"
-#include "mqtt_client.h"
+#include "MqttClient.h"
 #include <stdbool.h>
 #include "math.h"
 
-uint16_t Relay_Pins[] = {
+struct blind_s blinds[num_blinds];
+struct doubleswitch_s doubleswitches[num_doubleswitches];
+
+
+uint16_t Relay_Pins[num_relay_ch] = {
 OUT01DOWN_Pin, OUT01UP_Pin,
 OUT02DOWN_Pin, OUT02UP_Pin,
 OUT03DOWN_Pin, OUT03UP_Pin,
@@ -21,7 +25,7 @@ OUT06DOWN_Pin, OUT06UP_Pin,
 OUT07DOWN_Pin, OUT07UP_Pin,
 OUT08DOWN_Pin, OUT08UP_Pin};
 
-GPIO_TypeDef *Relay_Ports[] = {
+GPIO_TypeDef *Relay_Ports[num_relay_ch] = {
 OUT01DOWN_GPIO_Port, OUT01UP_GPIO_Port,
 OUT02DOWN_GPIO_Port, OUT02UP_GPIO_Port,
 OUT03DOWN_GPIO_Port, OUT03UP_GPIO_Port,
@@ -31,13 +35,13 @@ OUT06DOWN_GPIO_Port, OUT06UP_GPIO_Port,
 OUT07DOWN_GPIO_Port, OUT07UP_GPIO_Port,
 OUT08DOWN_GPIO_Port, OUT08UP_GPIO_Port};
 
-uint16_t Input_Pins[] = {
+uint16_t Input_Pins[num_input_ch] = {
 IN01_Pin, IN02_Pin, IN03_Pin, IN04_Pin, IN05_Pin,
 IN06_Pin, IN07_Pin, IN08_Pin, IN09_Pin, IN10_Pin,
 IN11_Pin, IN12_Pin, IN13_Pin, IN14_Pin, IN15_Pin,
 IN16_Pin, IN17_Pin, IN18_Pin};
 
-GPIO_TypeDef *Input_Ports[] = {
+GPIO_TypeDef *Input_Ports[num_input_ch] = {
 IN01_GPIO_Port, IN02_GPIO_Port, IN03_GPIO_Port, IN04_GPIO_Port,
 IN05_GPIO_Port, IN06_GPIO_Port, IN07_GPIO_Port, IN08_GPIO_Port,
 IN09_GPIO_Port, IN10_GPIO_Port, IN11_GPIO_Port, IN12_GPIO_Port,
@@ -70,7 +74,6 @@ void transferDoubleswitch2Blind(uint8_t inputchannel);
 void publishCentralDoubleswitchTopic(void);
 GPIO_PinState GPIO_Read_Up_Debounced(struct doubleswitch_s *doubleswitch);
 GPIO_PinState GPIO_Read_Down_Debounced(struct doubleswitch_s *doubleswitch);
-
 
 void initBlinds()
 {
@@ -245,7 +248,7 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch)
         {
             doubleswitch->upInput_starttime = xTaskGetTickCount(); //store current time
             doubleswitch->inputdirection = inputdirection_up;
-            publish_doubleswitch_stat(doubleswitch);
+            MqttClient_PublishDoubleswitchStat(doubleswitch);
             doubleswitch->changed = true;
         }
     }
@@ -281,7 +284,7 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch)
             doubleswitch->inputdirection = inputdirection_down;
             doubleswitch->angle_target = 100;
             doubleswitch->changed = true;
-            publish_doubleswitch_stat(doubleswitch);
+            MqttClient_PublishDoubleswitchStat(doubleswitch);
         }
     }
     else
@@ -310,7 +313,7 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch)
                 default:
                     break;
             }
-            publish_doubleswitch_stat(doubleswitch);
+            MqttClient_PublishDoubleswitchStat(doubleswitch);
         }
     }
 }
@@ -329,8 +332,8 @@ void checkBlindPosition(uint8_t channel)
             {
                 blinds[channel].angle_actual = blinds[channel].angle_target;
                 blinds[channel].blinddirection = blinddirection_off;
-                publish_blinddir_stat(&blinds[channel]);
-                publish_blinddir_cmd(&blinds[channel]);
+                MqttClient_PublishBlindDirStat(&blinds[channel]);
+                MqttClient_PublishBlindDirCmd(&blinds[channel]);
             }
             break;
         case blinddirection_angle_down:
@@ -341,8 +344,8 @@ void checkBlindPosition(uint8_t channel)
             {
                 blinds[channel].angle_actual = blinds[channel].angle_target;
                 blinds[channel].blinddirection = blinddirection_off;
-                publish_blinddir_stat(&blinds[channel]);
-                publish_blinddir_cmd(&blinds[channel]);
+                MqttClient_PublishBlindDirStat(&blinds[channel]);
+                MqttClient_PublishBlindDirCmd(&blinds[channel]);
             }
             break;
         case blinddirection_up:
@@ -390,8 +393,8 @@ void checkBlindPosition(uint8_t channel)
                     {
                         blinds[channel].blinddirection = blinddirection_off;
                         setBlindDirection(&blinds[channel]);
-                        publish_blinddir_stat(&blinds[channel]);
-                        publish_blinddir_cmd(&blinds[channel]);
+                        MqttClient_PublishBlindDirStat(&blinds[channel]);
+                        MqttClient_PublishBlindDirCmd(&blinds[channel]);
                     }
                 }
             }
@@ -443,8 +446,8 @@ void checkBlindPosition(uint8_t channel)
                     {
                         blinds[channel].blinddirection = blinddirection_off;
                         setBlindDirection(&blinds[channel]);
-                        publish_blinddir_stat(&blinds[channel]);
-                        publish_blinddir_cmd(&blinds[channel]);
+                        MqttClient_PublishBlindDirStat(&blinds[channel]);
+                        MqttClient_PublishBlindDirCmd(&blinds[channel]);
                     }
                 }
             }
@@ -485,7 +488,7 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                                 blinds[blindchannel].position_actual = blinds[blindchannel].position_movingtimeup;
                             }
                             setBlindDirection(&blinds[blindchannel]);
-                            publish_blinddir_stat(&blinds[blindchannel]);
+                            MqttClient_PublishBlindDirStat(&blinds[blindchannel]);
                         }
                         break;
                     case inputdirection_down:
@@ -499,7 +502,7 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                                 blinds[blindchannel].position_actual = 0;
                             }
                             setBlindDirection(&blinds[blindchannel]);
-                            publish_blinddir_stat(&blinds[blindchannel]);
+                            MqttClient_PublishBlindDirStat(&blinds[blindchannel]);
                         }
                         break;
                     default:
@@ -507,7 +510,7 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                         {
                             blinds[blindchannel].blinddirection = blinddirection_off;
                             setBlindDirection(&blinds[blindchannel]);
-                            publish_blinddir_stat(&blinds[blindchannel]);
+                            MqttClient_PublishBlindDirStat(&blinds[blindchannel]);
                         }
                         break;
                 }
@@ -536,7 +539,7 @@ void publishCentralDoubleswitchTopic(void)
                     struct blind_s tempblind;
                     tempblind.channel = var + 1;
                     tempblind.blinddirection = blinddirection_up;
-                    publish_blinddir_cmd(&tempblind);
+                    MqttClient_PublishBlindDirCmd(&tempblind);
                 }
                 break;
             case inputdirection_down:
@@ -545,7 +548,7 @@ void publishCentralDoubleswitchTopic(void)
                     struct blind_s tempblind;
                     tempblind.channel = var + 1;
                     tempblind.blinddirection = blinddirection_down;
-                    publish_blinddir_cmd(&tempblind);
+                    MqttClient_PublishBlindDirCmd(&tempblind);
                 }
                 break;
             default:
@@ -554,7 +557,7 @@ void publishCentralDoubleswitchTopic(void)
                     struct blind_s tempblind;
                     tempblind.channel = var + 1;
                     tempblind.blinddirection = blinddirection_off;
-                    publish_blinddir_cmd(&tempblind);
+                    MqttClient_PublishBlindDirCmd(&tempblind);
                 }
                 break;
         }
@@ -756,7 +759,7 @@ void StartScanInputTask(void *argument)
             blindcurrent -= 300;
         }
         blindcurrent_avg = movingavg(blindcurrent);
-        setMQTTCurrent(blindcurrent_avg);
+        MqttClient_SetMQTTCurrent(blindcurrent_avg);
 
         osDelayUntil(xTicks+10);//100Hz
         xTicks = xTaskGetTickCount();
@@ -885,4 +888,15 @@ void calc_position(uint8_t percent, struct blind_s *blind)
     percent = xs[i] + (percent - ys[i]) * dx / dy;
 
     blind->position_target = (double)blind->position_movingtimeup/(double)100*percent;
+}
+
+
+struct blind_s *Dio_GetBlinds(void)
+{
+    return blinds;
+}
+
+struct doubleswitch_s *Dio_GetDoubleswitches(void)
+{
+    return doubleswitches;
 }

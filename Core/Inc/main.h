@@ -160,6 +160,7 @@ void setReset(void);
 #define OUT08DOWN_GPIO_Port GPIOB
 #define OUT08UP_Pin GPIO_PIN_9
 #define OUT08UP_GPIO_Port GPIOB
+
 /* USER CODE BEGIN Private defines */
 
 #define ADDR_FLASH_SECTOR_0     ((uint32_t)0x08000000) /* Base address of Sector 0, 32 Kbytes */
@@ -178,5 +179,3 @@ void setReset(void);
 #endif
 
 #endif /* __MAIN_H */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
