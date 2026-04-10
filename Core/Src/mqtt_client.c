@@ -994,13 +994,13 @@ void publish_ha_discovery(void)
         osDelay(500); /* wait for ring buffer to flush before next large payload */
     }
 
-    for(uint8_t var = 0; var < num_doubleswitches; ++var)
-    {
-        publish_ha_discovery_input(&mqttDoubleswitches_pst[var]);
-        osDelay(500);
-    }
-
-    publish_ha_discovery_current();
+    // for(uint8_t var = 0; var < num_doubleswitches; ++var)
+    // {
+    //     publish_ha_discovery_input(&mqttDoubleswitches_pst[var]);
+    //     osDelay(500);
+    // }
+    //
+    // publish_ha_discovery_current();
     osDelay(500);
 
     printf("INFO: Home Assistant MQTT discovery complete\r\n");

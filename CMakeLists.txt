@@ -73,3 +73,26 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 )
+
+# Prefer toolchain-provided objcopy and fall back to common names.
+set(OBJCOPY_TOOL ${CMAKE_OBJCOPY})
+if(NOT OBJCOPY_TOOL)
+    find_program(OBJCOPY_TOOL NAMES arm-none-eabi-objcopy objcopy)
+endif()
+
+if(NOT OBJCOPY_TOOL)
+    message(FATAL_ERROR "objcopy tool not found. Set CMAKE_OBJCOPY or add arm-none-eabi-objcopy to PATH.")
+endif()
+
+set(HEX_FILE ${CMAKE_PROJECT_NAME}.hex)
+set(BIN_FILE ${CMAKE_PROJECT_NAME}.bin)
+add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+        COMMAND ${OBJCOPY_TOOL} -O ihex $<TARGET_FILE:${CMAKE_PROJECT_NAME}> ${HEX_FILE}
+        COMMAND ${OBJCOPY_TOOL} -O binary $<TARGET_FILE:${CMAKE_PROJECT_NAME}> ${BIN_FILE}
+        COMMENT "Generating ${HEX_FILE} and ${BIN_FILE}"
+        VERBATIM
+)
+
+set_property(TARGET ${CMAKE_PROJECT_NAME} APPEND PROPERTY
+        ADDITIONAL_CLEAN_FILES ${HEX_FILE} ${BIN_FILE}
+)
