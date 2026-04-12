@@ -65,17 +65,17 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for mqttTask */
-osThreadId_t mqttTaskHandle;
-const osThreadAttr_t mqttTask_attributes = {
-  .name = "mqttTask",
+/* Definitions for MqttClientTask */
+osThreadId_t MqttClientTaskHandle;
+const osThreadAttr_t MqttClientTask_attributes = {
+  .name = "MqttClientTask",
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal6,
 };
-/* Definitions for scanInputTask */
-osThreadId_t scanInputTaskHandle;
-const osThreadAttr_t scanInputTask_attributes = {
-  .name = "scanInputTask",
+/* Definitions for ScanInputTask */
+osThreadId_t ScanInputTaskHandle;
+const osThreadAttr_t ScanInputTask_attributes = {
+  .name = "ScanInputTask",
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
 };
@@ -345,11 +345,11 @@ int main(void)
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of mqttTask */
-  mqttTaskHandle = osThreadNew(MqttClient_StartTask, NULL, &mqttTask_attributes);
+  /* creation of MqttClientTask */
+  MqttClientTaskHandle = osThreadNew(MqttClient_StartTask, NULL, &MqttClientTask_attributes);
 
-  /* creation of scanInputTask */
-  scanInputTaskHandle = osThreadNew(Dio_StartScanInputTask, (void*) &hadc1, &scanInputTask_attributes);
+  /* creation of ScanInputTask */
+  ScanInputTaskHandle = osThreadNew(Dio_StartScanInputTask, (void*) &hadc1, &ScanInputTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -734,40 +734,40 @@ void StartDefaultTask(void *argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_StartmqttTask */
+/* USER CODE BEGIN Header_MqttClient_StartTask */
 /**
-* @brief Function implementing the mqttTask thread.
+* @brief Function implementing the MqttClientTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartmqttTask */
+/* USER CODE END Header_MqttClient_StartTask */
 __weak void MqttClient_StartTask(void *argument)
 {
-  /* USER CODE BEGIN StartmqttTask */
+  /* USER CODE BEGIN MqttClient_StartTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartmqttTask */
+  /* USER CODE END MqttClient_StartTask */
 }
 
-/* USER CODE BEGIN Header_StartScanInputTask */
+/* USER CODE BEGIN Header_Dio_StartScanInputTask */
 /**
-* @brief Function implementing the scanInputTask thread.
+* @brief Function implementing the ScanInputTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartScanInputTask */
+/* USER CODE END Header_Dio_StartScanInputTask */
 __weak void Dio_StartScanInputTask(void *argument)
 {
-  /* USER CODE BEGIN StartScanInputTask */
+  /* USER CODE BEGIN Dio_StartScanInputTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartScanInputTask */
+  /* USER CODE END Dio_StartScanInputTask */
 }
 
 /**

@@ -51,10 +51,10 @@
 /* Parameters set in STM32CubeMX LwIP Configuration GUI -*/
 /*----- Value in opt.h for LWIP_DHCP: 0 -----*/
 #define LWIP_DHCP 1
-/*----- Default Value for LWIP_DNS: 0 -----*/
-#define LWIP_DNS 1
 /*----- Default Value for LWIP_IGMP: 0 ---*/
 #define LWIP_IGMP 1
+/*----- Default Value for LWIP_DNS: 0 ---*/
+#define LWIP_DNS 1
 /*----- Default Value for MEMP_NUM_UDP_PCB: 4 ---*/
 #define MEMP_NUM_UDP_PCB 6
 /*----- Default Value for MEMP_NUM_TCP_PCB: 5 ---*/
@@ -83,7 +83,7 @@
 #define MEMP_NUM_PBUF 64
 /*----- Default Value for MEMP_NUM_TCP_PCB_LISTEN: 8 ---*/
 #define MEMP_NUM_TCP_PCB_LISTEN 10
-/*----- Default Value for MEMP_NUM_SYS_TIMEOUT: 7 ---*/
+/*----- Default Value for MEMP_NUM_SYS_TIMEOUT: 8 ---*/
 #define MEMP_NUM_SYS_TIMEOUT 12
 /*----- Default Value for PBUF_POOL_SIZE: 16 ---*/
 #define PBUF_POOL_SIZE 64
