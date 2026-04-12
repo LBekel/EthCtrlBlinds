@@ -69,165 +69,19 @@ uint16_t adc_offset = 0; //counts
 /* Variable containing ADC conversions data */
 ALIGN_32BYTES(static uint16_t aADCxConvertedData[ADC_CONVERTED_DATA_BUFFER_SIZE]);
 
-void checkBlindPosition(uint8_t channel);
-void transferDoubleswitch2Blind(uint8_t inputchannel);
-void publishCentralDoubleswitchTopic(void);
-GPIO_PinState GPIO_Read_Up_Debounced(struct doubleswitch_s *doubleswitch);
-GPIO_PinState GPIO_Read_Down_Debounced(struct doubleswitch_s *doubleswitch);
+void dioCheckBlindPosition(uint8_t channel);
+void dioTransferDoubleswitch2Blind(uint8_t inputchannel);
+void dioPublishCentralDoubleswitchTopic(void);
+GPIO_PinState dioGpioReadUpDebounced(struct doubleswitch_s *doubleswitch);
+GPIO_PinState dioGpioReadDownDebounced(struct doubleswitch_s *doubleswitch);
+void dioReadDoubleswitch(struct doubleswitch_s *doubleswitch);
+int16_t dioGetCurrentADC(void);
+int16_t dioMovingAvg(int16_t blindcurrent);
+void dioLearnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent);
 
-void initBlinds()
+void dioReadDoubleswitch(struct doubleswitch_s *doubleswitch)
 {
-    for(int var = 0; var < num_blinds; ++var)
-    {
-        blinds[var].channel = var + 1;
-        blinds[var].downRelay_Pin = Relay_Pins[var * 2];
-        blinds[var].downRelay_Port = Relay_Ports[var * 2];
-        blinds[var].upRelay_Pin = Relay_Pins[var * 2 + 1];
-        blinds[var].upRelay_Port = Relay_Ports[var * 2 + 1];
-        blinds[var].blinddirection = blinddirection_off;
-        blinds[var].position_function_active = true;
-        blinds[var].position_actual = 0;
-        blinds[var].position_changed = true;
-        blinds[var].blindlearn = blindlearn_finished;
-        blinds[var].angle_function_active = false;
-        blinds[var].angle_actual = 0;
-        blinds[var].angle_movingtime = 1000;
-    }
-}
-
-void setBlindsMovingTimeUp(uint32_t *blindsmovingtime)
-{
-    for(int var = 0; var < num_blinds; ++var)
-    {
-        blinds[var].position_movingtimeup = (uint32_t) blindsmovingtime[var];
-    }
-}
-
-void setBlindsMovingTimeDown(uint32_t *blindsmovingtime)
-{
-    for(int var = 0; var < num_blinds; ++var)
-    {
-        blinds[var].position_movingtimedown = (uint32_t) blindsmovingtime[var];
-    }
-}
-
-void setBlindsPos50(uint8_t *blindspos50)
-{
-    for(int var = 0; var < num_blinds; var++)
-    {
-        blinds[var].position_50 = blindspos50[var];
-    }
-}
-
-void setRaffstore(bool *raffstore)
-{
-    for(int var = 0; var < num_blinds; var++)
-    {
-        blinds[var].angle_function_active = raffstore[var];
-    }
-}
-void setRaffstoreMovingtime(uint16_t *raffmovingtime)
-{
-    for(int var = 0; var < num_blinds; ++var)
-    {
-        blinds[var].angle_movingtime = (uint16_t) raffmovingtime[var];
-    }
-}
-void setBlindInputMatrix(uint16_t *blindinputmatrix)
-{
-    for(int var = 0; var < num_blinds; ++var)
-    {
-        blinds[var].inputmatrix = (uint16_t) blindinputmatrix[var];
-    }
-}
-void setPositionFunction(bool *position_function_active)
-{
-    for(int var = 0; var < num_blinds; var++)
-    {
-        blinds[var].position_function_active = position_function_active[var];
-    }
-}
-
-void setBlindDirection(struct blind_s *blind)
-{
-    switch(blind->blinddirection)
-    {
-        case blinddirection_angle_up:
-            if(blind->angle_actual > blind->angle_target) // move up
-            {
-                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
-                blind->starttime = xTaskGetTickCount();
-            }
-            break;
-        case blinddirection_angle_down:
-            if (blind->angle_actual < blind->angle_target) //move down
-            {
-                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_SET);
-                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
-                blind->starttime = xTaskGetTickCount();
-            }
-            break;
-        case blinddirection_up:
-            if(blind->position_actual > blind->position_target) //check if we are not on the top position
-            {
-                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
-                blind->starttime = xTaskGetTickCount();// + MOTORSTARTDELAY;
-            }
-            else
-            {
-                blind->blinddirection = blinddirection_off;
-                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_RESET);
-                blind->starttime = 0;
-            }
-            break;
-        case blinddirection_down:
-
-            if(blind->position_actual < blind->position_target) //check if we are not on the bottom position
-            {
-                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_SET);
-                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
-                blind->starttime = xTaskGetTickCount();// + MOTORSTARTDELAY;
-            }
-            else
-            {
-                blind->blinddirection = blinddirection_off;
-                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
-                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_RESET);
-                blind->starttime = 0;
-            }
-            break;
-        case blinddirection_off:
-            HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
-            HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_RESET);
-            blind->starttime = 0;
-            break;
-        default:
-            break;
-    }
-}
-
-void initDoubleswitches(void)
-{
-    for(uint8_t var = 0; var < num_doubleswitches; ++var)
-    {
-        doubleswitches[var].channel = var + 1;
-        doubleswitches[var].downInput_Pin = Input_Pins[var * 2];
-        doubleswitches[var].downInput_Port = Input_Ports[var * 2];
-        doubleswitches[var].upInput_Pin = Input_Pins[var * 2 + 1];
-        doubleswitches[var].upInput_Port = Input_Ports[var * 2 + 1];
-        doubleswitches[var].inputdirection = blinddirection_off;
-        doubleswitches[var].changed = false;
-        doubleswitches[var].updebounce = 0;
-        doubleswitches[var].downdebounce = 0;
-    }
-}
-
-void readDoubleswitch(struct doubleswitch_s *doubleswitch)
-{
-    if(GPIO_Read_Up_Debounced(doubleswitch) == GPIO_PIN_SET)
+    if(dioGpioReadUpDebounced(doubleswitch) == GPIO_PIN_SET)
     {
         TickType_t timeelapsed;
         timeelapsed = xTaskGetTickCount() - doubleswitch->upInput_starttime;
@@ -252,7 +106,7 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch)
             doubleswitch->changed = true;
         }
     }
-    else if(GPIO_Read_Down_Debounced(doubleswitch) == GPIO_PIN_SET)
+    else if(dioGpioReadDownDebounced(doubleswitch) == GPIO_PIN_SET)
     {
         TickType_t timeelapsed;
         timeelapsed = xTaskGetTickCount() - doubleswitch->downInput_starttime;
@@ -318,7 +172,7 @@ void readDoubleswitch(struct doubleswitch_s *doubleswitch)
     }
 }
 
-void checkBlindPosition(uint8_t channel)
+void dioCheckBlindPosition(uint8_t channel)
 {
 	double factor;
 	int32_t deltaPosition;
@@ -332,6 +186,7 @@ void checkBlindPosition(uint8_t channel)
             {
                 blinds[channel].angle_actual = blinds[channel].angle_target;
                 blinds[channel].blinddirection = blinddirection_off;
+                Dio_SetBlindDirection(&blinds[channel]);
                 MqttClient_PublishBlindDirStat(&blinds[channel]);
                 MqttClient_PublishBlindDirCmd(&blinds[channel]);
             }
@@ -344,6 +199,7 @@ void checkBlindPosition(uint8_t channel)
             {
                 blinds[channel].angle_actual = blinds[channel].angle_target;
                 blinds[channel].blinddirection = blinddirection_off;
+                Dio_SetBlindDirection(&blinds[channel]);
                 MqttClient_PublishBlindDirStat(&blinds[channel]);
                 MqttClient_PublishBlindDirCmd(&blinds[channel]);
             }
@@ -387,12 +243,12 @@ void checkBlindPosition(uint8_t channel)
                     if(blinds[channel].angle_function_active)
                     {
                         blinds[channel].blinddirection = blinddirection_angle_down;
-                        setBlindDirection(&blinds[channel]);
+                        Dio_SetBlindDirection(&blinds[channel]);
                     }
                     else
                     {
                         blinds[channel].blinddirection = blinddirection_off;
-                        setBlindDirection(&blinds[channel]);
+                        Dio_SetBlindDirection(&blinds[channel]);
                         MqttClient_PublishBlindDirStat(&blinds[channel]);
                         MqttClient_PublishBlindDirCmd(&blinds[channel]);
                     }
@@ -440,12 +296,12 @@ void checkBlindPosition(uint8_t channel)
                     if(blinds[channel].angle_function_active)
                     {
                         blinds[channel].blinddirection = blinddirection_angle_up;
-                        setBlindDirection(&blinds[channel]);
+                        Dio_SetBlindDirection(&blinds[channel]);
                     }
                     else
                     {
                         blinds[channel].blinddirection = blinddirection_off;
-                        setBlindDirection(&blinds[channel]);
+                        Dio_SetBlindDirection(&blinds[channel]);
                         MqttClient_PublishBlindDirStat(&blinds[channel]);
                         MqttClient_PublishBlindDirCmd(&blinds[channel]);
                     }
@@ -458,7 +314,7 @@ void checkBlindPosition(uint8_t channel)
     }
 }
 
-void transferDoubleswitch2Blind(uint8_t inputchannel)
+void dioTransferDoubleswitch2Blind(uint8_t inputchannel)
 {
     if(doubleswitches[inputchannel].changed == true)
     {
@@ -487,7 +343,7 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                             {
                                 blinds[blindchannel].position_actual = blinds[blindchannel].position_movingtimeup;
                             }
-                            setBlindDirection(&blinds[blindchannel]);
+                            Dio_SetBlindDirection(&blinds[blindchannel]);
                             MqttClient_PublishBlindDirStat(&blinds[blindchannel]);
                         }
                         break;
@@ -501,7 +357,7 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                             {
                                 blinds[blindchannel].position_actual = 0;
                             }
-                            setBlindDirection(&blinds[blindchannel]);
+                            Dio_SetBlindDirection(&blinds[blindchannel]);
                             MqttClient_PublishBlindDirStat(&blinds[blindchannel]);
                         }
                         break;
@@ -509,7 +365,7 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
                         if(blinds[blindchannel].blinddirection != blinddirection_off)
                         {
                             blinds[blindchannel].blinddirection = blinddirection_off;
-                            setBlindDirection(&blinds[blindchannel]);
+                            Dio_SetBlindDirection(&blinds[blindchannel]);
                             MqttClient_PublishBlindDirStat(&blinds[blindchannel]);
                         }
                         break;
@@ -518,7 +374,45 @@ void transferDoubleswitch2Blind(uint8_t inputchannel)
         }
     }
 }
-void publishCentralDoubleswitchTopic(void)
+
+
+GPIO_PinState dioGpioReadUpDebounced(struct doubleswitch_s *doubleswitch)
+{
+    GPIO_PinState pinstate = HAL_GPIO_ReadPin(doubleswitch->upInput_Port, doubleswitch->upInput_Pin);
+
+    // do a moving average of the digital input... result button between 0 and (2 * DEBOUNCE_CYCLE)
+    doubleswitch->updebounce = (doubleswitch->updebounce * ((2 * DEBOUNCE_CYCLE)-1) + (float)pinstate * 2 * DEBOUNCE_CYCLE) / (2 * DEBOUNCE_CYCLE);
+
+    if(doubleswitch->updebounce > DEBOUNCE_CYCLE)
+    {
+        return GPIO_PIN_SET;
+    }
+    else
+    {
+        return GPIO_PIN_RESET;
+    }
+
+}
+
+GPIO_PinState dioGpioReadDownDebounced(struct doubleswitch_s *doubleswitch)
+{
+    GPIO_PinState pinstate = HAL_GPIO_ReadPin(doubleswitch->downInput_Port, doubleswitch->downInput_Pin);
+
+    // do a moving average of the digital input... result button between 0 and (2 * DEBOUNCE_CYCLE)
+    doubleswitch->downdebounce = (doubleswitch->downdebounce * ((2 * DEBOUNCE_CYCLE)-1) + (float)pinstate * 2 * DEBOUNCE_CYCLE) / (2 * DEBOUNCE_CYCLE);
+
+    if(doubleswitch->downdebounce > DEBOUNCE_CYCLE)
+    {
+        return GPIO_PIN_SET;
+    }
+    else
+    {
+        return GPIO_PIN_RESET;
+    }
+
+}
+
+void dioPublishCentralDoubleswitchTopic(void)
 {
     //if central button is pressed this function sends a mqtt cmd for all channel
     //Todo: make the mqtt topic dynamic via web interface
@@ -564,30 +458,7 @@ void publishCentralDoubleswitchTopic(void)
     }
 }
 
-/**
- * @brief  Conversion complete callback in non-blocking mode
- * @param  hadc: ADC handle
- * @retval None
- */
-void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
-{
-    /* Invalidate Data Cache to get the updated content of the SRAM on the first half of the ADC converted data buffer: 32 bytes */
-    SCB_InvalidateDCache_by_Addr((uint32_t*) &aADCxConvertedData[0], ADC_CONVERTED_DATA_BUFFER_SIZE);
-}
-
-/**
- * @brief  Conversion DMA half-transfer callback in non-blocking mode
- * @param  hadc: ADC handle
- * @retval None
- */
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
-{
-    /* Invalidate Data Cache to get the updated content of the SRAM on the second half of the ADC converted data buffer: 32 bytes */
-    SCB_InvalidateDCache_by_Addr((uint32_t*) &aADCxConvertedData[ADC_CONVERTED_DATA_BUFFER_SIZE / 2],
-    ADC_CONVERTED_DATA_BUFFER_SIZE);
-}
-
-int16_t getCurrentADC(void)
+int16_t dioGetCurrentADC(void)
 {
     //HAL_ADC_PollForConversion((ADC_HandleTypeDef*)argument, 1);
     /* Retrieve ADC conversion data */
@@ -617,16 +488,8 @@ int16_t getCurrentADC(void)
     return value;
 }
 
-void setBlindcurrentThreshold(int16_t value)
-{
-    blindcurrent_threshold = value;
-}
-uint16_t getBlindcurrentThreshold(void)
-{
-    return blindcurrent_threshold;
-}
 
-void learnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
+void dioLearnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
 {
     static TickType_t movingtime = 0;
     static TickType_t movinguptime = 0;
@@ -641,7 +504,7 @@ void learnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
                 blind->position_actual = MAXMOVINGTIME; //first move will go up, so set position to bottom
                 blind->position_target = 0; //set to max value to disable automatic off function;
                 blind->blinddirection = blinddirection_up;
-                setBlindDirection(blind);
+                Dio_SetBlindDirection(blind);
                 movingtime = blind->starttime; //store the time for MINLEARNDELAY function
                 blind->blindlearn = blindlearn_up1;
                 break;
@@ -651,7 +514,7 @@ void learnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
                     blind->position_actual = 0; //next move will go down, so set position to top max
                     blind->position_target = MAXMOVINGTIME; //set to max value to disable automatic off function;
                     blind->blinddirection = blinddirection_down;
-                    setBlindDirection(blind);
+                    Dio_SetBlindDirection(blind);
                     movingtime = blind->starttime; //store the time of start moving
                     blind->blindlearn = blindlearn_down;
                 }
@@ -669,7 +532,7 @@ void learnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
                     blind->position_actual = MAXMOVINGTIME; //next move will go up, so set position to bottom
                     blind->position_target = 0; //set to min value to disable automatic off function;
                     blind->blinddirection = blinddirection_up;
-                    setBlindDirection(blind);
+                    Dio_SetBlindDirection(blind);
                     movingtime = blind->starttime; //store the time of start moving
                     blind->blindlearn = blindlearn_up2;
                 }
@@ -688,7 +551,7 @@ void learnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
                     blind->position_changed = true;
                     blind->blindlearn = blindlearn_finished;
                     blind->blinddirection = blinddirection_off;
-                    setBlindDirection(blind);
+                    Dio_SetBlindDirection(blind);
 
                 }
             default:
@@ -697,7 +560,7 @@ void learnBlindMovingTime(struct blind_s *blind, int16_t blindcurrent)
     }
 }
 
-int16_t movingavg(int16_t blindcurrent)
+int16_t dioMovingAvg(int16_t blindcurrent)
 {
     static uint8_t i = 0;
     static int16_t blindcurrent_buf[BLINDCURRENT_BUF_SIZE];
@@ -717,9 +580,9 @@ int16_t movingavg(int16_t blindcurrent)
     return avg / BLINDCURRENT_BUF_SIZE;
 }
 
-void StartScanInputTask(void *argument)
+void Dio_StartScanInputTask(void *argument)
 {
-    int16_t blindcurrent_avg;
+    int16_t blindcurrent_avg = 0;
     int16_t blindcurrent = 0;
     TickType_t xTicks = xTaskGetTickCount();
     if(HAL_ADC_Start_DMA((ADC_HandleTypeDef*) argument, (uint32_t*) aADCxConvertedData,
@@ -732,8 +595,8 @@ void StartScanInputTask(void *argument)
     //all relays are off, get ADC Offset
     for (int8_t var = 0; var < BLINDCURRENT_BUF_SIZE; ++var)
     {
-        blindcurrent = getCurrentADC();
-        blindcurrent_avg = movingavg(blindcurrent);
+        blindcurrent = dioGetCurrentADC();
+        blindcurrent_avg = dioMovingAvg(blindcurrent);
         osDelayUntil(xTicks+10);//100Hz
         xTicks = xTaskGetTickCount();
     }
@@ -745,20 +608,18 @@ void StartScanInputTask(void *argument)
     {
         for(int var = 0; var < num_doubleswitches; var++)
         {
-            learnBlindMovingTime(&blinds[var], blindcurrent_avg);
-            readDoubleswitch(&doubleswitches[var]);
-            transferDoubleswitch2Blind(var);
-            checkBlindPosition(var);
+            dioLearnBlindMovingTime(&blinds[var], blindcurrent_avg);
+            dioReadDoubleswitch(&doubleswitches[var]);
+            dioTransferDoubleswitch2Blind(var);
+            dioCheckBlindPosition(var);
         }
-        //readDoubleswitch(&doubleswitches[8]);
-        //publishCentralDoubleswitchTopic();
 
-        blindcurrent = getCurrentADC();
+        blindcurrent = dioGetCurrentADC();
         if((blinds[0].blinddirection == blinddirection_down)||(blinds[0].blinddirection == blinddirection_angle_down))
         {
             blindcurrent -= 300;
         }
-        blindcurrent_avg = movingavg(blindcurrent);
+        blindcurrent_avg = dioMovingAvg(blindcurrent);
         MqttClient_SetMQTTCurrent(blindcurrent_avg);
 
         osDelayUntil(xTicks+10);//100Hz
@@ -766,130 +627,156 @@ void StartScanInputTask(void *argument)
     }
 }
 
-
-
-GPIO_PinState GPIO_Read_Up_Debounced(struct doubleswitch_s *doubleswitch)
+void Dio_InitBlinds()
 {
-    GPIO_PinState pinstate = HAL_GPIO_ReadPin(doubleswitch->upInput_Port, doubleswitch->upInput_Pin);
-
-    // do a moving average of the digital input... result button between 0 and (2 * DEBOUNCE_CYCLE)
-    doubleswitch->updebounce = (doubleswitch->updebounce * ((2 * DEBOUNCE_CYCLE)-1) + (float)pinstate * 2 * DEBOUNCE_CYCLE) / (2 * DEBOUNCE_CYCLE);
-
-    if(doubleswitch->updebounce > DEBOUNCE_CYCLE)
+    for(int var = 0; var < num_blinds; ++var)
     {
-        return GPIO_PIN_SET;
+        blinds[var].channel = var + 1;
+        blinds[var].downRelay_Pin = Relay_Pins[var * 2];
+        blinds[var].downRelay_Port = Relay_Ports[var * 2];
+        blinds[var].upRelay_Pin = Relay_Pins[var * 2 + 1];
+        blinds[var].upRelay_Port = Relay_Ports[var * 2 + 1];
+        blinds[var].blinddirection = blinddirection_off;
+        blinds[var].position_function_active = true;
+        blinds[var].position_actual = 0;
+        blinds[var].position_changed = true;
+        blinds[var].blindlearn = blindlearn_finished;
+        blinds[var].angle_function_active = false;
+        blinds[var].angle_actual = 0;
+        blinds[var].angle_movingtime = 1000;
     }
-    else
-    {
-        return GPIO_PIN_RESET;
-    }
-
 }
 
-GPIO_PinState GPIO_Read_Down_Debounced(struct doubleswitch_s *doubleswitch)
+
+void Dio_SetBlindsMovingTimeUp(uint32_t *blindsmovingtime)
 {
-    GPIO_PinState pinstate = HAL_GPIO_ReadPin(doubleswitch->downInput_Port, doubleswitch->downInput_Pin);
-
-    // do a moving average of the digital input... result button between 0 and (2 * DEBOUNCE_CYCLE)
-    doubleswitch->downdebounce = (doubleswitch->downdebounce * ((2 * DEBOUNCE_CYCLE)-1) + (float)pinstate * 2 * DEBOUNCE_CYCLE) / (2 * DEBOUNCE_CYCLE);
-
-    if(doubleswitch->downdebounce > DEBOUNCE_CYCLE)
+    for(int var = 0; var < num_blinds; ++var)
     {
-        return GPIO_PIN_SET;
+        blinds[var].position_movingtimeup = (uint32_t) blindsmovingtime[var];
     }
-    else
-    {
-        return GPIO_PIN_RESET;
-    }
-
 }
 
-uint8_t calc_real_position(struct blind_s *blind)
+void Dio_SetBlindsMovingTimeDown(uint32_t *blindsmovingtime)
 {
-    uint8_t percent;
-    percent = round((double) 100.0 / blind->position_movingtimeup * blind->position_actual);
-    if(percent >= 100)
+    for(int var = 0; var < num_blinds; ++var)
     {
-        percent = 100;
+        blinds[var].position_movingtimedown = (uint32_t) blindsmovingtime[var];
     }
-    else if(percent <= 0)
+}
+
+void Dio_SetBlindsPos50(uint8_t *blindspos50)
+{
+    for(int var = 0; var < num_blinds; var++)
     {
-        percent = 0;
+        blinds[var].position_50 = blindspos50[var];
     }
+}
 
-    uint8_t xs[] = {0,0,100};
-    uint8_t ys[] = {0,50,100};
-
-    xs[1] = blind->position_50;
-
-
-    /* number of elements in the array */
-    static const int count = sizeof(xs)/sizeof(xs[0]);
-
-    int i;
-    double dx, dy;
-
-    if (percent < xs[0]) {
-        /* x is less than the minimum element
-         * handle error here if you want */
-        return ys[0]; /* return minimum element */
+void Dio_SetRaffstore(bool *raffstore)
+{
+    for(int var = 0; var < num_blinds; var++)
+    {
+        blinds[var].angle_function_active = raffstore[var];
     }
-
-    if (percent > xs[count-1]) {
-        return ys[count-1]; /* return maximum */
+}
+void Dio_SetRaffstoreMovingtime(uint16_t *raffmovingtime)
+{
+    for(int var = 0; var < num_blinds; ++var)
+    {
+        blinds[var].angle_movingtime = (uint16_t) raffmovingtime[var];
     }
+}
+void Dio_SetBlindInputMatrix(uint16_t *blindinputmatrix)
+{
+    for(int var = 0; var < num_blinds; ++var)
+    {
+        blinds[var].inputmatrix = (uint16_t) blindinputmatrix[var];
+    }
+}
+void Dio_SetPositionFunction(bool *position_function_active)
+{
+    for(int var = 0; var < num_blinds; var++)
+    {
+        blinds[var].position_function_active = position_function_active[var];
+    }
+}
 
-    /* find i, such that xs[i] <= x < xs[i+1] */
-    for (i = 0; i < count-1; i++) {
-        if (xs[i+1] > percent) {
+void Dio_SetBlindDirection(struct blind_s *blind)
+{
+    switch(blind->blinddirection)
+    {
+        case blinddirection_angle_up:
+            if(blind->angle_actual > blind->angle_target) // move up
+            {
+                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
+                blind->starttime = xTaskGetTickCount();
+            }
             break;
-        }
-    }
-
-    /* interpolate */
-    dx = xs[i+1] - xs[i];
-    dy = ys[i+1] - ys[i];
-    return ys[i] + (percent - xs[i]) * dy / dx;
-}
-
-void calc_position(uint8_t percent, struct blind_s *blind)
-{
-    if(percent >= 100)
-    {
-        percent = 100;
-    }
-    else if(percent <= 0)
-    {
-        percent = 0;
-    }
-
-    uint8_t xs[] = {0,0,100};
-    uint8_t ys[] = {0,50,100};
-
-    xs[1] = blind->position_50;
-
-    /* number of elements in the array */
-    static const int count = sizeof(xs)/sizeof(xs[0]);
-
-    int i;
-    double dx, dy;
-
-    /* find i, such that xs[i] <= x < xs[i+1] */
-    for (i = 0; i < count-1; i++) {
-        if (ys[i+1] > percent) {
+        case blinddirection_angle_down:
+            if (blind->angle_actual < blind->angle_target) //move down
+            {
+                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_SET);
+                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
+                blind->starttime = xTaskGetTickCount();
+            }
             break;
-        }
+        case blinddirection_up:
+            if(blind->position_actual > blind->position_target) //check if we are not on the top position
+            {
+                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
+                blind->starttime = xTaskGetTickCount();// + MOTORSTARTDELAY;
+            }
+            else
+            {
+                blind->blinddirection = blinddirection_off;
+                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_RESET);
+                blind->starttime = 0;
+            }
+            break;
+        case blinddirection_down:
+
+            if(blind->position_actual < blind->position_target) //check if we are not on the bottom position
+            {
+                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_SET);
+                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_SET);
+                blind->starttime = xTaskGetTickCount();// + MOTORSTARTDELAY;
+            }
+            else
+            {
+                blind->blinddirection = blinddirection_off;
+                HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_RESET);
+                blind->starttime = 0;
+            }
+            break;
+        case blinddirection_off:
+            HAL_GPIO_WritePin(blind->downRelay_Port, blind->downRelay_Pin, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(blind->upRelay_Port, blind->upRelay_Pin, GPIO_PIN_RESET);
+            blind->starttime = 0;
+            break;
+        default:
+            break;
     }
-
-    /* interpolate */
-    dx = xs[i+1] - xs[i];
-    dy = ys[i+1] - ys[i];
-
-    percent = xs[i] + (percent - ys[i]) * dx / dy;
-
-    blind->position_target = (double)blind->position_movingtimeup/(double)100*percent;
 }
 
+void Dio_InitDoubleswitches(void)
+{
+    for(uint8_t var = 0; var < num_doubleswitches; ++var)
+    {
+        doubleswitches[var].channel = var + 1;
+        doubleswitches[var].downInput_Pin = Input_Pins[var * 2];
+        doubleswitches[var].downInput_Port = Input_Ports[var * 2];
+        doubleswitches[var].upInput_Pin = Input_Pins[var * 2 + 1];
+        doubleswitches[var].upInput_Port = Input_Ports[var * 2 + 1];
+        doubleswitches[var].inputdirection = blinddirection_off;
+        doubleswitches[var].changed = false;
+        doubleswitches[var].updebounce = 0;
+        doubleswitches[var].downdebounce = 0;
+    }
+}
 
 struct blind_s *Dio_GetBlinds(void)
 {
@@ -899,4 +786,36 @@ struct blind_s *Dio_GetBlinds(void)
 struct doubleswitch_s *Dio_GetDoubleswitches(void)
 {
     return doubleswitches;
+}
+
+void Dio_SetBlindcurrentThreshold(int16_t value)
+{
+    blindcurrent_threshold = value;
+}
+uint16_t Dio_GetBlindcurrentThreshold(void)
+{
+    return blindcurrent_threshold;
+}
+
+/**
+ * @brief  Conversion complete callback in non-blocking mode
+ * @param  hadc: ADC handle
+ * @retval None
+ */
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    /* Invalidate Data Cache to get the updated content of the SRAM on the first half of the ADC converted data buffer: 32 bytes */
+    SCB_InvalidateDCache_by_Addr((uint32_t*) &aADCxConvertedData[0], ADC_CONVERTED_DATA_BUFFER_SIZE);
+}
+
+/**
+ * @brief  Conversion DMA half-transfer callback in non-blocking mode
+ * @param  hadc: ADC handle
+ * @retval None
+ */
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    /* Invalidate Data Cache to get the updated content of the SRAM on the second half of the ADC converted data buffer: 32 bytes */
+    SCB_InvalidateDCache_by_Addr((uint32_t*) &aADCxConvertedData[ADC_CONVERTED_DATA_BUFFER_SIZE / 2],
+    ADC_CONVERTED_DATA_BUFFER_SIZE);
 }

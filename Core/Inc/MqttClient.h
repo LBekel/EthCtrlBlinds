@@ -27,6 +27,8 @@ void MqttClient_GetMQTTTopic(char * topic);
 void MqttClient_SetMQTTTopic(char * topic);
 void MqttClient_GetMQTTHost(ip_addr_t * mqtt_host_addr);
 void MqttClient_SetMQTTHost(ip_addr_t * mqtt_host_addr);
+void MqttClient_GetMQTTHostString(char *host);
+void MqttClient_SetMQTTHostString(const char *host);
 void MqttClient_SetMQTTCurrent(int16_t _current);
 
 #endif

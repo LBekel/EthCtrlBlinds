@@ -65,17 +65,17 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for mqttTask */
-osThreadId_t mqttTaskHandle;
-const osThreadAttr_t mqttTask_attributes = {
-  .name = "mqttTask",
+/* Definitions for MqttClientTask */
+osThreadId_t MqttClientTaskHandle;
+const osThreadAttr_t MqttClientTask_attributes = {
+  .name = "MqttClientTask",
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal6,
 };
-/* Definitions for scanInputTask */
-osThreadId_t scanInputTaskHandle;
-const osThreadAttr_t scanInputTask_attributes = {
-  .name = "scanInputTask",
+/* Definitions for ScanInputTask */
+osThreadId_t ScanInputTaskHandle;
+const osThreadAttr_t ScanInputTask_attributes = {
+  .name = "ScanInputTask",
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
 };
@@ -88,12 +88,6 @@ struct ee_storage_s eemqtttopic = {
 		.VirtAddrStartNb = 1,
 		.VirtWordCount = 5,
 		.pData = (uint16_t*)mqtttopic};
-
-static ip_addr_t hostip = IPADDR4_INIT_BYTES(192,168,1,3);
-struct ee_storage_s eemqtthost = {
-		.VirtAddrStartNb = 11,
-		.VirtWordCount = 2,
-		.pData = (uint16_t*)&hostip};
 
 uint32_t blindmovingtimeup[] = {120000,120000,120000,120000,120000,120000,120000,120000};
 struct ee_storage_s eeblindmovingtimeup = {
@@ -143,7 +137,18 @@ struct ee_storage_s eeposition_function_active = {
         .VirtWordCount = 4,
         .pData = (uint16_t*)&position_function_active};
 
-uint16_t VirtAddVarTab[74];
+static union
+{
+  char host[MQTT_HOST_STORAGE_LEN];
+  uint16_t words[MQTT_HOST_STORAGE_LEN / 2U];
+} mqtthost_storage = {.host = "192.168.1.3"};
+
+struct ee_storage_s eemqtthost = {
+  .VirtAddrStartNb = 74,
+  .VirtWordCount = (MQTT_HOST_STORAGE_LEN / 2U),
+  .pData = mqtthost_storage.words};
+
+uint16_t VirtAddVarTab[90];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -155,7 +160,7 @@ static void MX_UART8_Init(void);
 static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void *argument);
 void MqttClient_StartTask(void *argument);
-void StartScanInputTask(void *argument);
+void Dio_StartScanInputTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -223,8 +228,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("Start Application\r\n");
   printf("compiled " __DATE__ " " __TIME__ "\r\n");
-  initBlinds();
-  initDoubleswitches();
+  Dio_InitBlinds();
+  Dio_InitDoubleswitches();
   /* Unlock the Flash Program Erase controller */
   if( HAL_FLASH_Unlock() != HAL_OK)
   {
@@ -242,57 +247,69 @@ int main(void)
 
         if(EE_ReadStorage(&eemqtthost))
         {
-            EE_WriteStorage(&eemqtthost); //Write default to flash
+            // Migrate legacy layout (2 words IPv4 at same virtual start addresses).
+            ip_addr_t legacy_host = IPADDR4_INIT_BYTES(192,168,1,3);
+            struct ee_storage_s legacy_eemqtthost = {
+                    .VirtAddrStartNb = eemqtthost.VirtAddrStartNb,
+                    .VirtWordCount = 2,
+                    .pData = (uint16_t*)&legacy_host};
+
+            if(EE_ReadStorage(&legacy_eemqtthost) == 0)
+            {
+                snprintf((char*)eemqtthost.pData, MQTT_HOST_STORAGE_LEN, "%s", ipaddr_ntoa(&legacy_host));
+            }
+
+            EE_WriteStorage(&eemqtthost); //Write default/migrated value to flash
         }
-        MqttClient_SetMQTTHost((ip_addr_t*) eemqtthost.pData);
+        MqttClient_SetMQTTHostString((char*)eemqtthost.pData);
 
         if(EE_ReadStorage(&eeblindmovingtimeup))
         {
             EE_WriteStorage(&eeblindmovingtimeup); //Write default to flash
         }
-        setBlindsMovingTimeUp((uint32_t*) eeblindmovingtimeup.pData);
+        Dio_SetBlindsMovingTimeUp((uint32_t*) eeblindmovingtimeup.pData);
 
         if(EE_ReadStorage(&eeblindmovingtimedown))
         {
             EE_WriteStorage(&eeblindmovingtimedown); //Write default to flash
         }
-        setBlindsMovingTimeDown((uint32_t*) eeblindmovingtimedown.pData);
+        Dio_SetBlindsMovingTimeDown((uint32_t*) eeblindmovingtimedown.pData);
 
         if(EE_ReadStorage(&eecurrentthreshold))
         {
             EE_WriteStorage(&eecurrentthreshold); //Write default to flash
         }
-        setBlindcurrentThreshold(currentthreshold);
+        Dio_SetBlindcurrentThreshold(currentthreshold);
 
         if(EE_ReadStorage(&eeblindpos50))
         {
             EE_WriteStorage(&eeblindpos50); //Write default to flash
         }
-        setBlindsPos50((uint8_t*) eeblindpos50.pData);
+        Dio_SetBlindsPos50((uint8_t*) eeblindpos50.pData);
 
         if(EE_ReadStorage(&eeraffstore))
         {
             EE_WriteStorage(&eeraffstore); //Write default to flash
         }
-        setRaffstore((bool*) eeraffstore.pData);
+        Dio_SetRaffstore((bool*) eeraffstore.pData);
 
         if(EE_ReadStorage(&eeraffmovingtime))
         {
             EE_WriteStorage(&eeraffmovingtime); //Write default to flash
         }
-        setRaffstoreMovingtime((uint16_t*) eeraffmovingtime.pData);
+        Dio_SetRaffstoreMovingtime((uint16_t*) eeraffmovingtime.pData);
 
         if(EE_ReadStorage(&eeblindinputmatrix))
         {
             EE_WriteStorage(&eeblindinputmatrix); //Write default to flash
         }
-        setBlindInputMatrix((uint16_t*) eeblindinputmatrix.pData);
+        Dio_SetBlindInputMatrix((uint16_t*) eeblindinputmatrix.pData);
 
         if(EE_ReadStorage(&eeposition_function_active))
         {
             EE_WriteStorage(&eeposition_function_active); //Write default to flash
         }
-        setPositionFunction((bool*) eeposition_function_active.pData);
+        Dio_SetPositionFunction((bool*) eeposition_function_active.pData);
     }
     else
     {
@@ -328,11 +345,11 @@ int main(void)
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of mqttTask */
-  mqttTaskHandle = osThreadNew(MqttClient_StartTask, NULL, &mqttTask_attributes);
+  /* creation of MqttClientTask */
+  MqttClientTaskHandle = osThreadNew(MqttClient_StartTask, NULL, &MqttClientTask_attributes);
 
-  /* creation of scanInputTask */
-  scanInputTaskHandle = osThreadNew(StartScanInputTask, (void*) &hadc1, &scanInputTask_attributes);
+  /* creation of ScanInputTask */
+  ScanInputTaskHandle = osThreadNew(Dio_StartScanInputTask, (void*) &hadc1, &ScanInputTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -699,8 +716,8 @@ void StartDefaultTask(void *argument)
   // netif_set_hostname(&gnetif,mqtttopic);
   httpd_init();
   // initializing CGI  [= CGI #7 =]
-  myCGIinit();
-  mySSIinit();
+  Web_CGIinit();
+  Web_SSIinit();
   mdns_resp_add_service(netif_default, "Blinds configuration", "_http", DNSSD_PROTO_TCP, 80,300, srv_txt, NULL);
   //mdns_resp_announce(netif_default);
   /* Infinite loop */
@@ -717,40 +734,40 @@ void StartDefaultTask(void *argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_StartmqttTask */
+/* USER CODE BEGIN Header_MqttClient_StartTask */
 /**
-* @brief Function implementing the mqttTask thread.
+* @brief Function implementing the MqttClientTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartmqttTask */
+/* USER CODE END Header_MqttClient_StartTask */
 __weak void MqttClient_StartTask(void *argument)
 {
-  /* USER CODE BEGIN StartmqttTask */
+  /* USER CODE BEGIN MqttClient_StartTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartmqttTask */
+  /* USER CODE END MqttClient_StartTask */
 }
 
-/* USER CODE BEGIN Header_StartScanInputTask */
+/* USER CODE BEGIN Header_Dio_StartScanInputTask */
 /**
-* @brief Function implementing the scanInputTask thread.
+* @brief Function implementing the ScanInputTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartScanInputTask */
-__weak void StartScanInputTask(void *argument)
+/* USER CODE END Header_Dio_StartScanInputTask */
+__weak void Dio_StartScanInputTask(void *argument)
 {
-  /* USER CODE BEGIN StartScanInputTask */
+  /* USER CODE BEGIN Dio_StartScanInputTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartScanInputTask */
+  /* USER CODE END Dio_StartScanInputTask */
 }
 
 /**

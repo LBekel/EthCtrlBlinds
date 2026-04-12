@@ -8,6 +8,7 @@
 #include "MqttClient.h"
 #include <lwip/dhcp.h>
 #include <lwip/tcpip.h>
+#include <lwip/dns.h>
 
 #include "lwip/apps/mqtt_priv.h"
 #include <stdio.h>
@@ -40,6 +41,9 @@
 #define MQTT_PUBLISH_QUEUE_TIMEOUT_MS 20
 #define MQTT_BLINDS_REFRESH_INTERVAL_MS 60000U
 
+#define MQTT_CLIENT_ADDITIONAL_MOVE_TIME_MS 5000U
+#define MQTT_HOST_MAX_LEN 32U
+
 typedef struct
 {
     char topic[MQTT_PUBLISH_MAX_TOPIC_LEN + 1];
@@ -57,6 +61,9 @@ static volatile bool mqtt_publish_queue_overflow_logged = false;
 
 static mqtt_client_t client;
 static ip_addr_t mqtt_server_ip_addr;
+static char mqtt_server_host[MQTT_HOST_MAX_LEN] = "192.168.1.3";
+static bool mqtt_server_host_is_dns = false;
+static volatile bool mqtt_dns_query_pending = false;
 static volatile bool mqtt_bootstrap_in_progress = false;
 static volatile bool mqtt_bootstrap_pending = false;
 static volatile bool mqtt_blinddir_publish_pending = false;
@@ -84,6 +91,7 @@ static bool mqttClientIsMqttTaskContext(void);
 static void mqttClientPublishQueueInit(void);
 static void mqttClientDrainPublishQueue(void);
 static void mqttClientConnect(mqtt_client_t *client);
+static void mqttClientDnsFoundCallback(const char *name, const ip_addr_t *ipaddr, void *callback_arg);
 static void mqttClientPublishBlinddirCmds(void);
 static void mqttClientSubscribeBlinddirCmd(void);
 static void mqttClientSubscribeBlindAngleCmd(void);
@@ -95,6 +103,8 @@ static void mqttClientPublishBlindAngleCmds(void);
 static void mqttClientPublishLwt(bool online);
 static void mqttClientPublishHaDiscoveryCover(struct blind_s *blind);
 static void mqttClientPublishHaDiscoveryInput(struct doubleswitch_s *ds);
+uint8_t mqttClientCalcRealBlindPosition(struct blind_s *blind);
+void mqttClientCalcBlindPosition(uint8_t percent, struct blind_s *blind);
 void mqttClientPublishBlindAngleStats(void);
 void mqttClientPublishBlindAngleStat(struct blind_s *blind);
 void mqttClientPublishBlindAngleCmd(struct blind_s *blind);
@@ -315,6 +325,29 @@ static void mqttClientConnect(mqtt_client_t *client)
     struct mqtt_connect_client_info_t ci;
     err_t err;
 
+    if(mqtt_server_host_is_dns)
+    {
+        if(mqtt_dns_query_pending)
+        {
+            return;
+        }
+
+        int dns_err = dns_gethostbyname(mqtt_server_host, &mqtt_server_ip_addr, mqttClientDnsFoundCallback, NULL);
+        if(dns_err == ERR_INPROGRESS)
+        {
+            mqtt_dns_query_pending = true;
+            printf("INFO: mqtt dns resolve started: %s\r\n", mqtt_server_host);
+            return;
+        }
+        if(dns_err != ERR_OK)
+        {
+            printf("ERROR: mqtt dns resolve failed for %s (%d)\r\n", mqtt_server_host, dns_err);
+            return;
+        }
+
+        printf("INFO: mqtt dns resolved immediately: %s -> %s\r\n", mqtt_server_host, ipaddr_ntoa(&mqtt_server_ip_addr));
+    }
+
     /* Setup an empty client info structure */
     memset(&ci, 0, sizeof(ci));
 
@@ -343,6 +376,21 @@ static void mqttClientConnect(mqtt_client_t *client)
     {
         printf("ERROR: mqtt_client_connect %d\n", err);
     }
+}
+
+static void mqttClientDnsFoundCallback(const char *name, const ip_addr_t *ipaddr, void *callback_arg)
+{
+    LWIP_UNUSED_ARG(callback_arg);
+    mqtt_dns_query_pending = false;
+
+    if(ipaddr == NULL)
+    {
+        printf("ERROR: mqtt dns callback failed: %s\r\n", name);
+        return;
+    }
+
+    mqtt_server_ip_addr = *ipaddr;
+    printf("INFO: mqtt dns callback resolved: %s -> %s\r\n", name, ipaddr_ntoa(&mqtt_server_ip_addr));
 }
 /**
  * @brief mqtt connection cb.
@@ -431,7 +479,7 @@ static void mqttClientIncomingPublishCallback(void *arg, const char *topic, u32_
  */
 static void mqttClientIncomingDataCallback(void *arg, const u8_t *data, u16_t len, u8_t flags)
 {
-    printf("Incoming publish payload with length %d, flags %u\n", len, (unsigned int) flags);
+    // printf("Incoming publish payload with length %d, flags %u\n", len, (unsigned int) flags);
 
     if(flags & MQTT_DATA_FLAG_LAST)
     {
@@ -444,31 +492,31 @@ static void mqttClientIncomingDataCallback(void *arg, const u8_t *data, u16_t le
             if(strncmp((const char*) data, payload_off, len) == 0)
             {
                 mqttBlinds_pst[channel].blinddirection = blinddirection_off;
-                setBlindDirection(&mqttBlinds_pst[channel]);
+                Dio_SetBlindDirection(&mqttBlinds_pst[channel]);
                 mqtt_blinddir_publish_pending = true;
             }
             else if(strncmp((const char*) data, payload_up, len) == 0)
             {
                 mqttBlinds_pst[channel].blinddirection = blinddirection_up;
-                mqttBlinds_pst[channel].position_target = 0 - 1000;
+                mqttBlinds_pst[channel].position_target = 0 - MQTT_CLIENT_ADDITIONAL_MOVE_TIME_MS;
                 mqttBlinds_pst[channel].angle_target = 0;
                 if(mqttBlinds_pst[channel].position_function_active == false)
                 {
                     mqttBlinds_pst[channel].position_actual = mqttBlinds_pst[channel].position_movingtimeup;
                 }
-                setBlindDirection(&mqttBlinds_pst[channel]);
+                Dio_SetBlindDirection(&mqttBlinds_pst[channel]);
                 mqtt_blinddir_publish_pending = true;
             }
             else if(strncmp((const char*) data, payload_down, len) == 0)
             {
                 mqttBlinds_pst[channel].blinddirection = blinddirection_down;
-                mqttBlinds_pst[channel].position_target = mqttBlinds_pst[channel].position_movingtimeup + 1000;
+                mqttBlinds_pst[channel].position_target = mqttBlinds_pst[channel].position_movingtimeup + MQTT_CLIENT_ADDITIONAL_MOVE_TIME_MS;
                 mqttBlinds_pst[channel].angle_target = mqttBlinds_pst[channel].angle_movingtime;
                 if(mqttBlinds_pst[channel].position_function_active == false)
                 {
                     mqttBlinds_pst[channel].position_actual = 0;
                 }
-                setBlindDirection(&mqttBlinds_pst[channel]);
+                Dio_SetBlindDirection(&mqttBlinds_pst[channel]);
                 mqtt_blinddir_publish_pending = true;
             }
             else
@@ -481,7 +529,7 @@ static void mqttClientIncomingDataCallback(void *arg, const u8_t *data, u16_t le
 
                 	if(percent>=100)
                 	{
-                		mqttBlinds_pst[channel].position_target = mqttBlinds_pst[channel].position_movingtimeup + 1000;
+                		mqttBlinds_pst[channel].position_target = mqttBlinds_pst[channel].position_movingtimeup + MQTT_CLIENT_ADDITIONAL_MOVE_TIME_MS;
                         if(mqttBlinds_pst[channel].position_function_active == false)
                         {
                             mqttBlinds_pst[channel].position_actual = mqttBlinds_pst[channel].position_movingtimeup;
@@ -489,7 +537,7 @@ static void mqttClientIncomingDataCallback(void *arg, const u8_t *data, u16_t le
                 	}
                 	else if(percent<=0)
                 	{
-                		mqttBlinds_pst[channel].position_target = 0 - 1000;
+                		mqttBlinds_pst[channel].position_target = 0 - MQTT_CLIENT_ADDITIONAL_MOVE_TIME_MS;
                         if(mqttBlinds_pst[channel].position_function_active == false)
                         {
                             mqttBlinds_pst[channel].position_actual = 0;
@@ -497,7 +545,7 @@ static void mqttClientIncomingDataCallback(void *arg, const u8_t *data, u16_t le
                 	}
                 	else
                 	{
-                	    calc_position(percent,&mqttBlinds_pst[channel]);
+                	    mqttClientCalcBlindPosition(percent,&mqttBlinds_pst[channel]);
                 	}
 
 
@@ -519,7 +567,7 @@ static void mqttClientIncomingDataCallback(void *arg, const u8_t *data, u16_t le
                         }
                         mqttBlinds_pst[channel].angle_target = mqttBlinds_pst[channel].angle_movingtime;
                     }
-                    setBlindDirection(&mqttBlinds_pst[channel]);
+                    Dio_SetBlindDirection(&mqttBlinds_pst[channel]);
                     mqtt_blinddir_publish_pending = true;
                 }
             }
@@ -554,7 +602,7 @@ static void mqttClientIncomingDataCallback(void *arg, const u8_t *data, u16_t le
                 {
                     mqttBlinds_pst[channel].blinddirection = blinddirection_off;
                 }
-                setBlindDirection(&mqttBlinds_pst[channel]);
+                Dio_SetBlindDirection(&mqttBlinds_pst[channel]);
             }
         }
         else
@@ -627,7 +675,7 @@ void mqttClientPublishBlindPosStat(struct blind_s *blind)
             sprintf(topic, BLINDPOSSTAT"%02d", mqttname, blind->channel); //build Topic
             char payload[6];
 
-            sprintf(payload, "%d", (uint8_t) calc_real_position(blind));
+            sprintf(payload, "%d", (uint8_t) mqttClientCalcRealBlindPosition(blind));
             err = mqttClientPublishDispatch(topic, payload, (u16_t)strlen(payload), qos, retain, mqttClientPublishRequestCallback, NULL);
 
             if(err != ERR_OK)
@@ -850,6 +898,93 @@ static void mqttClientPublishRequestCallback(void *arg, err_t result)
 }
 
 
+uint8_t mqttClientCalcRealBlindPosition(struct blind_s *blind)
+{
+    uint8_t percent;
+    percent = round((double) 100.0 / blind->position_movingtimeup * blind->position_actual);
+    if(percent >= 100)
+    {
+        percent = 100;
+    }
+    else if(percent <= 0)
+    {
+        percent = 0;
+    }
+
+    uint8_t xs[] = {0,0,100};
+    uint8_t ys[] = {0,50,100};
+
+    xs[1] = blind->position_50;
+
+
+    /* number of elements in the array */
+    static const int count = sizeof(xs)/sizeof(xs[0]);
+
+    int i;
+    double dx, dy;
+
+    if (percent < xs[0]) {
+        /* x is less than the minimum element
+         * handle error here if you want */
+        return ys[0]; /* return minimum element */
+    }
+
+    if (percent > xs[count-1]) {
+        return ys[count-1]; /* return maximum */
+    }
+
+    /* find i, such that xs[i] <= x < xs[i+1] */
+    for (i = 0; i < count-1; i++) {
+        if (xs[i+1] > percent) {
+            break;
+        }
+    }
+
+    /* interpolate */
+    dx = xs[i+1] - xs[i];
+    dy = ys[i+1] - ys[i];
+    return ys[i] + (percent - xs[i]) * dy / dx;
+}
+
+void mqttClientCalcBlindPosition(uint8_t percent, struct blind_s *blind)
+{
+    if(percent >= 100)
+    {
+        percent = 100;
+    }
+    else if(percent <= 0)
+    {
+        percent = 0;
+    }
+
+    uint8_t xs[] = {0,0,100};
+    uint8_t ys[] = {0,50,100};
+
+    xs[1] = blind->position_50;
+
+    /* number of elements in the array */
+    static const int count = sizeof(xs)/sizeof(xs[0]);
+
+    int i;
+    double dx, dy;
+
+    /* find i, such that xs[i] <= x < xs[i+1] */
+    for (i = 0; i < count-1; i++) {
+        if (ys[i+1] > percent) {
+            break;
+        }
+    }
+
+    /* interpolate */
+    dx = xs[i+1] - xs[i];
+    dy = ys[i+1] - ys[i];
+
+    percent = xs[i] + (percent - ys[i]) * dx / dy;
+
+    blind->position_target = (double)blind->position_movingtimeup/(double)100*percent;
+}
+
+
 /**
  * @brief publish ha discovery cover.
  * @param blind Parameter blind.
@@ -879,7 +1014,7 @@ static void mqttClientPublishHaDiscoveryCover(struct blind_s *blind)
              "\"command_topic\":\"cmnd/%s/blinddir%02d\","
              "\"state_topic\":\"stat/%s/blinddir%02d\","
              "\"position_topic\":\"stat/%s/blindpos%02d\","
-             "\"set_position_topic\":\"cmnd/%s/blindpos%02d\","
+             "\"set_position_topic\":\"cmnd/%s/blinddir%02d\","
              "\"tilt_command_topic\":\"cmnd/%s/blindang%02d\","
              "\"tilt_status_topic\":\"stat/%s/blindang%02d\","
              "\"availability_topic\":\"tele/%s/LWT\","
@@ -1113,14 +1248,57 @@ void MqttClient_GetMQTTHost(ip_addr_t *mqtt_host_addr)
 {
     *mqtt_host_addr = mqtt_server_ip_addr;
 }
+
+void MqttClient_GetMQTTHostString(char *host)
+{
+    if(host == NULL)
+    {
+        return;
+    }
+
+    strcpy(host, mqtt_server_host);
+}
 /**
  * @brief setMQTTHost.
  * @param mqtt_host_addr Parameter mqtt_host_addr.
  */
 void MqttClient_SetMQTTHost(ip_addr_t *mqtt_host_addr)
 {
+    if(mqtt_host_addr == NULL)
+    {
+        return;
+    }
+
     printf("set MQTT Host Address: %s\r\n", ipaddr_ntoa(mqtt_host_addr));
     mqtt_server_ip_addr = *mqtt_host_addr;
+    snprintf(mqtt_server_host, sizeof(mqtt_server_host), "%s", ipaddr_ntoa(mqtt_host_addr));
+    mqtt_server_host_is_dns = false;
+    mqtt_dns_query_pending = false;
+    mqtt_disconnect(&client); //disconnect to force new connect
+}
+
+void MqttClient_SetMQTTHostString(const char *host)
+{
+    if((host == NULL) || (host[0] == '\0'))
+    {
+        return;
+    }
+
+    snprintf(mqtt_server_host, sizeof(mqtt_server_host), "%s", host);
+
+    if(ipaddr_aton(mqtt_server_host, &mqtt_server_ip_addr) == 1)
+    {
+        mqtt_server_host_is_dns = false;
+        mqtt_dns_query_pending = false;
+        printf("set MQTT Host Address (IPv4): %s\r\n", mqtt_server_host);
+    }
+    else
+    {
+        mqtt_server_host_is_dns = true;
+        mqtt_dns_query_pending = false;
+        printf("set MQTT Host Address (DNS): %s\r\n", mqtt_server_host);
+    }
+
     mqtt_disconnect(&client); //disconnect to force new connect
 }
 /**
