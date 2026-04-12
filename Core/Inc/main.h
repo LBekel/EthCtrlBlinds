@@ -171,6 +171,7 @@ void setReset(void);
 #define ADDR_FLASH_SECTOR_5     ((uint32_t)0x08040000) /* Base address of Sector 5, 256 Kbytes */
 #define ADDR_FLASH_SECTOR_6     ((uint32_t)0x08080000) /* Base address of Sector 6, 256 Kbytes */
 #define ADDR_FLASH_SECTOR_7     ((uint32_t)0x080C0000) /* Base address of Sector 7, 256 Kbytes */
+#define MQTT_HOST_STORAGE_LEN 32U
 
 /* USER CODE END Private defines */
 

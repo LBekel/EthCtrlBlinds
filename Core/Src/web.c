@@ -1,10 +1,11 @@
- /*
+/*
  * web.c
  *
  *  Created on: Jun 8, 2021
  *      Author: LBekel
  */
 
+#include "web.h"
 #include "main.h"
 #include "MqttClient.h"
 #include "lwip/apps/httpd.h"
@@ -13,20 +14,55 @@
 #include <stdbool.h>
 #include "dio.h"
 
-const char* BlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
-const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
-const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
-const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
-const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
-const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
-uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen);
+const char* webBlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+const char* webMqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+const char* webLearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+const char* webSettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+const char* webBootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+const char* webPositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[]);
+uint16_t webSSIHandler(int iIndex, char *pcInsert, int iInsertLen);
 
-const tCGI BlindsCGI = {"/blinds.cgi", BlindsCGIhandler};
-const tCGI MqttCGI = {"/mqtt.cgi", MqttCGIhandler};
-const tCGI LearnCGI = {"/learn.cgi", LearnCGIhandler};
-const tCGI SettingCGI = {"/setting.cgi", SettingCGIhandler};
-const tCGI BootloaderCGI = {"/bootloader.cgi", BootloaderCGIhandler};
-const tCGI PositionCGI = {"/position.cgi", PositionCGIhandler};
+static bool webIsDnsHostname(const char *host)
+{
+    size_t len = strlen(host);
+    if((len == 0U) || (len > MQTT_HOST_STORAGE_LEN))
+    {
+        return false;
+    }
+
+    size_t label_len = 0U;
+
+    for(size_t i = 0U; i < len; ++i)
+    {
+        char c = host[i];
+
+        if(!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c == '-')))
+        {
+            return false;
+        }
+
+        if((label_len == 0U) && (c == '-'))
+        {
+            return false;
+        }
+
+        ++label_len;
+    }
+
+    if((label_len == 0U) || (label_len > 63U) || (host[len - 1U] == '-'))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+const tCGI BlindsCGI = {"/blinds.cgi", webBlindsCGIhandler};
+const tCGI MqttCGI = {"/mqtt.cgi", webMqttCGIhandler};
+const tCGI LearnCGI = {"/learn.cgi", webLearnCGIhandler};
+const tCGI SettingCGI = {"/setting.cgi", webSettingCGIhandler};
+const tCGI BootloaderCGI = {"/bootloader.cgi", webBootloaderCGIhandler};
+const tCGI PositionCGI = {"/position.cgi", webPositionCGIhandler};
 
 struct blind_s *webBlinds_pst;
 
@@ -55,28 +91,8 @@ enum eSSItags { SSITAGS numSSItags };
 #define C(x) #x,
 const char *const theSSItags[] = { SSITAGS };
 
-// function to initialize CGI
-void myCGIinit(void)
-{
-    theCGItable[0] = BlindsCGI;
-    theCGItable[1] = MqttCGI;
-    theCGItable[2] = LearnCGI;
-    theCGItable[3] = SettingCGI;
-    theCGItable[4] = BootloaderCGI;
-    theCGItable[5] = PositionCGI;
-    //give the table to the HTTP server
-    http_set_cgi_handlers(theCGItable, theCGItableSize);
-}
-
-// function to initialize SSI
-void mySSIinit(void)
-{
-    webBlinds_pst = Dio_GetBlinds();
-    http_set_ssi_handler(mySSIHandler, (char const**) theSSItags, numSSItags);
-}
-
 // the actual function for handling CGI
-const char* BlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+const char* webBlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
     for(uint8_t var = 0; var < iNumParams; var++)
     {
@@ -115,7 +131,7 @@ const char* BlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *
 
     for(uint8_t var = 0; var < num_blinds; var++)
     {
-        setBlindDirection(&webBlinds_pst[var]);
+        Dio_SetBlindDirection(&webBlinds_pst[var]);
         MqttClient_PublishBlindDirStat(&webBlinds_pst[var]);
     }
 
@@ -131,7 +147,7 @@ const char* BlindsCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *
  * @param pcValue
  * @return
  */
-const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+const char* webMqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
 
     for(uint8_t var = 0; var < iNumParams; var++)
@@ -146,16 +162,22 @@ const char* MqttCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pc
         if(strcmp(pcParam[var], theSSItags[mqtthost]) == 0)
         {
             ip_addr_t mqtt_host_addr;
-            ipaddr_aton((char* )pcValue[var], &mqtt_host_addr);
-            memcpy(eemqtthost.pData, &mqtt_host_addr, 4);
-            EE_WriteStorage(&eemqtthost);
-            MqttClient_SetMQTTHost(&mqtt_host_addr);
+            if((ipaddr_aton((char*)pcValue[var], &mqtt_host_addr) == 1) || webIsDnsHostname((char*)pcValue[var]))
+            {
+                snprintf((char*)eemqtthost.pData, MQTT_HOST_STORAGE_LEN, "%s", pcValue[var]);
+                EE_WriteStorage(&eemqtthost);
+                MqttClient_SetMQTTHostString((char*)eemqtthost.pData);
+            }
+            else
+            {
+                printf("ERROR: mqtt host invalid (not IPv4 or DNS): %s\r\n", pcValue[var]);
+            }
         }
     }
     return "/return.html";
 }
 
-const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+const char* webLearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
     for(uint8_t var = 0; var < iNumParams; var++)
     {
@@ -164,7 +186,7 @@ const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
             sscanf(pcValue[var], "%"SCNu16"", &currentthreshold);
             EE_WriteStorage(&eecurrentthreshold);
             printf("Current threshold: %d\r\n", currentthreshold);
-            setBlindcurrentThreshold(currentthreshold);
+            Dio_SetBlindcurrentThreshold(currentthreshold);
         }
         if(strncmp(pcParam[var], "blind", 5) == 0)
         {
@@ -177,7 +199,7 @@ const char* LearnCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *p
     return "/return.html";
 }
 
-const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+const char* webSettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
     bool temp_raffstore = false;
     uint16_t temp_blindinput = 0;
@@ -211,7 +233,7 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
             {
                 blindmovingtimeup[blindchannel] = value32;
                 EE_WriteStorage(&eeblindmovingtimeup);
-                setBlindsMovingTimeUp((uint32_t*) &blindmovingtimeup);
+                Dio_SetBlindsMovingTimeUp((uint32_t*) &blindmovingtimeup);
             }
             continue;
         }
@@ -226,7 +248,7 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
             {
                 blindmovingtimedown[blindchannel] = value32;
                 EE_WriteStorage(&eeblindmovingtimedown);
-                setBlindsMovingTimeDown((uint32_t*) &blindmovingtimedown);
+                Dio_SetBlindsMovingTimeDown((uint32_t*) &blindmovingtimedown);
             }
             continue;
         }
@@ -239,7 +261,7 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
             {
                 blindpos50[blindchannel] = value8;
                 EE_WriteStorage(&eeblindpos50);
-                setBlindsPos50((uint8_t*)&blindpos50);
+                Dio_SetBlindsPos50((uint8_t*)&blindpos50);
             }
             continue;
         }
@@ -254,7 +276,7 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
             {
                 raffmovingtime[blindchannel] = value16;
                 EE_WriteStorage(&eeraffmovingtime);
-                setRaffstoreMovingtime((uint16_t*) &raffmovingtime);
+                Dio_SetRaffstoreMovingtime((uint16_t*) &raffmovingtime);
             }
             continue;
         }
@@ -281,7 +303,7 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
     {
         position_function_active[blindchannel] = temp_posfunc;
         EE_WriteStorage(&eeposition_function_active);
-        setPositionFunction((bool*) &position_function_active);
+        Dio_SetPositionFunction((bool*) &position_function_active);
     }
 
     //only write to eeprom if value has changed
@@ -289,7 +311,7 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
     {
         raffstore[blindchannel] = temp_raffstore;
         EE_WriteStorage(&eeraffstore);
-        setRaffstore((bool*) &raffstore);
+        Dio_SetRaffstore((bool*) &raffstore);
     }
 
     //only write to eeprom if value has changed
@@ -297,13 +319,13 @@ const char* SettingCGIhandler(int iIndex, int iNumParams, char *pcParam[], char 
     {
         blindinputmatrix[blindchannel] = temp_blindinput;
         EE_WriteStorage(&eeblindinputmatrix);
-        setBlindInputMatrix((uint16_t*)&blindinputmatrix);
+        Dio_SetBlindInputMatrix((uint16_t*)&blindinputmatrix);
     }
 
     return "/return.html";
 }
 
-const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+const char* webBootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
     setReset();
     printf("Reset\r\n");
@@ -311,7 +333,7 @@ const char* BootloaderCGIhandler(int iIndex, int iNumParams, char *pcParam[], ch
     return "/startapp.html";
 }
 
-const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+const char* webPositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
     static uint16_t channel = 0;
     uint16_t value = 0;
@@ -324,7 +346,7 @@ const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char
             sscanf(pcValue[var], "%2"SCNu16"", &value);
             blindpos50[channel] = value;
             EE_WriteStorage(&eeblindpos50);
-            setBlindsPos50((uint8_t*)&blindpos50);
+            Dio_SetBlindsPos50((uint8_t*)&blindpos50);
         }
         if(strncmp(pcParam[var], "blind", 5) == 0)
         {
@@ -336,7 +358,7 @@ const char* PositionCGIhandler(int iIndex, int iNumParams, char *pcParam[], char
 }
 
 // the actual function for SSI
-uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
+uint16_t webSSIHandler(int iIndex, char *pcInsert, int iInsertLen)
 {
     char myStr[LWIP_HTTPD_MAX_TAG_INSERT_LEN];
     if((iIndex >= blind1) && (iIndex <= blind8))
@@ -441,17 +463,16 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
     }
     if(iIndex == mqtthost)
     {
-        ip_addr_t mqtt_host_addr;
-        MqttClient_GetMQTTHost(&mqtt_host_addr);
-        sprintf(myStr, "<input value=\"%s\" name=\"mqtthost\" type=\"text\" id=\"mqtthost\" size=\"25\">",
-                ipaddr_ntoa(&mqtt_host_addr));
+        char host[MQTT_HOST_STORAGE_LEN];
+        MqttClient_GetMQTTHostString(host);
+        sprintf(myStr, "<input value=\"%s\" name=\"mqtthost\" type=\"text\" id=\"mqtthost\" size=\"25\">", host);
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }
     if(iIndex == current)
     {
         sprintf(myStr, "<input value=\"%d\" name=\"current\" type=\"text\" id=\"current\" size=\"10\" maxlength=\"4\">",
-                getBlindcurrentThreshold());
+                Dio_GetBlindcurrentThreshold());
         strcpy(pcInsert, myStr);
         return strlen(myStr);
     }
@@ -504,4 +525,24 @@ uint16_t mySSIHandler(int iIndex, char *pcInsert, int iInsertLen)
         return strlen(myStr);
     }
     return 0;
+}
+
+// function to initialize CGI
+void Web_CGIinit(void)
+{
+    theCGItable[0] = BlindsCGI;
+    theCGItable[1] = MqttCGI;
+    theCGItable[2] = LearnCGI;
+    theCGItable[3] = SettingCGI;
+    theCGItable[4] = BootloaderCGI;
+    theCGItable[5] = PositionCGI;
+    //give the table to the HTTP server
+    http_set_cgi_handlers(theCGItable, theCGItableSize);
+}
+
+// function to initialize SSI
+void Web_SSIinit(void)
+{
+    webBlinds_pst = Dio_GetBlinds();
+    http_set_ssi_handler(webSSIHandler, (char const**) theSSItags, numSSItags);
 }

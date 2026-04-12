@@ -8,7 +8,7 @@
 #ifndef INC_WEB_H_
 #define INC_WEB_H_
 
-void myCGIinit(void);
-void mySSIinit(void);
+void Web_CGIinit(void);
+void Web_SSIinit(void);
 
 #endif /* INC_WEB_H_ */

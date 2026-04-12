@@ -115,22 +115,19 @@ struct doubleswitch_s{
 #define num_input_ch 18
 
 
-void initBlinds(void);
-void setBlindsMovingTimeUp(uint32_t * blindsmovingtime);
-void setBlindsMovingTimeDown(uint32_t *blindsmovingtime);
-void setBlindsPos50(uint8_t *blindspos50);
-void setRaffstore(bool *raffstore);
-void setRaffstoreMovingtime(uint16_t *raffmovingtime);
-void setBlindInputMatrix(uint16_t *blindinputmatrix);
-void setPositionFunction(bool *position_function_active);
-void setBlindDirection(struct blind_s *blind);
-void initDoubleswitches(void);
-void readDoubleswitch(struct doubleswitch_s *doubleswitch);
-void setBlindcurrentThreshold(int16_t value);
-uint16_t getBlindcurrentThreshold(void);
+void Dio_InitBlinds(void);
+void Dio_SetBlindsMovingTimeUp(uint32_t * blindsmovingtime);
+void Dio_SetBlindsMovingTimeDown(uint32_t *blindsmovingtime);
+void Dio_SetBlindsPos50(uint8_t *blindspos50);
+void Dio_SetRaffstore(bool *raffstore);
+void Dio_SetRaffstoreMovingtime(uint16_t *raffmovingtime);
+void Dio_SetBlindInputMatrix(uint16_t *blindinputmatrix);
+void Dio_SetPositionFunction(bool *position_function_active);
+void Dio_SetBlindDirection(struct blind_s *blind);
+void Dio_InitDoubleswitches(void);
+void Dio_SetBlindcurrentThreshold(int16_t value);
+uint16_t Dio_GetBlindcurrentThreshold(void);
 void StartScanInputsTask(void *argument);
-uint8_t calc_real_position(struct blind_s *blind);
-void calc_position(uint8_t percent, struct blind_s *blind);
 struct blind_s *Dio_GetBlinds(void);
 struct doubleswitch_s *Dio_GetDoubleswitches(void);
 
