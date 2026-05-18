@@ -69,8 +69,8 @@ uint16_t adc_offset = 0; //counts
 /* Variable containing ADC conversions data */
 ALIGN_32BYTES(static uint16_t aADCxConvertedData[ADC_CONVERTED_DATA_BUFFER_SIZE]);
 
-void dioCheckBlindPosition(uint8_t channel);
-void dioTransferDoubleswitch2Blind(uint8_t inputchannel);
+void dioCheckBlindPosition(uint8_t blindCh_u8);
+void dioTransferDoubleswitch2Blind(uint8_t dsChannel_u8);
 void dioPublishCentralDoubleswitchTopic(void);
 GPIO_PinState dioGpioReadUpDebounced(struct doubleswitch_s *doubleswitch);
 GPIO_PinState dioGpioReadDownDebounced(struct doubleswitch_s *doubleswitch);
@@ -172,138 +172,143 @@ void dioReadDoubleswitch(struct doubleswitch_s *doubleswitch)
     }
 }
 
-void dioCheckBlindPosition(uint8_t channel)
+void dioCheckBlindPosition(uint8_t blindCh_u8)
 {
 	double factor;
 	int32_t deltaPosition;
-    switch(blinds[channel].blinddirection)
+    if (blindCh_u8 >= num_blinds)
+    {
+        return;
+    }
+
+    switch(blinds[blindCh_u8].blinddirection)
     {
         case blinddirection_angle_up:
-            blinds[channel].angle_actual -= xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
-            blinds[channel].starttime = xTaskGetTickCount();
-            blinds[channel].angle_changed = true;
-            if(blinds[channel].angle_actual <= blinds[channel].angle_target) //angle reached
+            blinds[blindCh_u8].angle_actual -= xTaskGetTickCount() - blinds[blindCh_u8].starttime; //timeposition in ms
+            blinds[blindCh_u8].starttime = xTaskGetTickCount();
+            blinds[blindCh_u8].angle_changed = true;
+            if(blinds[blindCh_u8].angle_actual <= blinds[blindCh_u8].angle_target) //angle reached
             {
-                blinds[channel].angle_actual = blinds[channel].angle_target;
-                blinds[channel].blinddirection = blinddirection_off;
-                Dio_SetBlindDirection(&blinds[channel]);
-                MqttClient_PublishBlindDirStat(&blinds[channel]);
-                MqttClient_PublishBlindDirCmd(&blinds[channel]);
+                blinds[blindCh_u8].angle_actual = blinds[blindCh_u8].angle_target;
+                blinds[blindCh_u8].blinddirection = blinddirection_off;
+                Dio_SetBlindDirection(&blinds[blindCh_u8]);
+                MqttClient_PublishBlindDirStat(&blinds[blindCh_u8]);
+                MqttClient_PublishBlindDirCmd(&blinds[blindCh_u8]);
             }
             break;
         case blinddirection_angle_down:
-            blinds[channel].angle_actual += xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
-            blinds[channel].starttime = xTaskGetTickCount();
-            blinds[channel].angle_changed = true;
-            if(blinds[channel].angle_actual >= blinds[channel].angle_target) //angle reached
+            blinds[blindCh_u8].angle_actual += xTaskGetTickCount() - blinds[blindCh_u8].starttime; //timeposition in ms
+            blinds[blindCh_u8].starttime = xTaskGetTickCount();
+            blinds[blindCh_u8].angle_changed = true;
+            if(blinds[blindCh_u8].angle_actual >= blinds[blindCh_u8].angle_target) //angle reached
             {
-                blinds[channel].angle_actual = blinds[channel].angle_target;
-                blinds[channel].blinddirection = blinddirection_off;
-                Dio_SetBlindDirection(&blinds[channel]);
-                MqttClient_PublishBlindDirStat(&blinds[channel]);
-                MqttClient_PublishBlindDirCmd(&blinds[channel]);
+                blinds[blindCh_u8].angle_actual = blinds[blindCh_u8].angle_target;
+                blinds[blindCh_u8].blinddirection = blinddirection_off;
+                Dio_SetBlindDirection(&blinds[blindCh_u8]);
+                MqttClient_PublishBlindDirStat(&blinds[blindCh_u8]);
+                MqttClient_PublishBlindDirCmd(&blinds[blindCh_u8]);
             }
             break;
         case blinddirection_up:
         	//moving up is slower
 
-            if(blinds[channel].angle_function_active)
+            if(blinds[blindCh_u8].angle_function_active)
             {
-                if(blinds[channel].angle_actual>0) //increment angle if not at end position
+                if(blinds[blindCh_u8].angle_actual>0) //increment angle if not at end position
                 {
-                    blinds[channel].angle_actual -= xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
-                    blinds[channel].angle_changed = true;
+                    blinds[blindCh_u8].angle_actual -= xTaskGetTickCount() - blinds[blindCh_u8].starttime; //timeposition in ms
+                    blinds[blindCh_u8].angle_changed = true;
                 }
-                else if(blinds[channel].angle_actual==0)
+                else if(blinds[blindCh_u8].angle_actual==0)
                 {
-                    blinds[channel].angle_actual = 0;
+                    blinds[blindCh_u8].angle_actual = 0;
                 }
                 else
                 {
-                    blinds[channel].angle_actual = 0;
-                    blinds[channel].angle_changed = true;
+                    blinds[blindCh_u8].angle_actual = 0;
+                    blinds[blindCh_u8].angle_changed = true;
                 }
             }
 
-            deltaPosition = xTaskGetTickCount() - blinds[channel].starttime;
+            deltaPosition = xTaskGetTickCount() - blinds[blindCh_u8].starttime;
             if(deltaPosition > 0)
             {
-                blinds[channel].position_actual -= xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms;
-                blinds[channel].starttime = xTaskGetTickCount();
-                blinds[channel].position_changed = true;
-                if(blinds[channel].position_actual <= blinds[channel].position_target)
+                blinds[blindCh_u8].position_actual -= xTaskGetTickCount() - blinds[blindCh_u8].starttime; //timeposition in ms;
+                blinds[blindCh_u8].starttime = xTaskGetTickCount();
+                blinds[blindCh_u8].position_changed = true;
+                if(blinds[blindCh_u8].position_actual <= blinds[blindCh_u8].position_target)
                 {
                     //Target position reached
-                    if(blinds[channel].position_target < 0)
+                    if(blinds[blindCh_u8].position_target < 0)
                     {
-                        blinds[channel].position_target = 0;
+                        blinds[blindCh_u8].position_target = 0;
                     }
-                    blinds[channel].position_actual = blinds[channel].position_target;
+                    blinds[blindCh_u8].position_actual = blinds[blindCh_u8].position_target;
 
-                    if(blinds[channel].angle_function_active)
+                    if(blinds[blindCh_u8].angle_function_active)
                     {
-                        blinds[channel].blinddirection = blinddirection_angle_down;
-                        Dio_SetBlindDirection(&blinds[channel]);
+                        blinds[blindCh_u8].blinddirection = blinddirection_angle_down;
+                        Dio_SetBlindDirection(&blinds[blindCh_u8]);
                     }
                     else
                     {
-                        blinds[channel].blinddirection = blinddirection_off;
-                        Dio_SetBlindDirection(&blinds[channel]);
-                        MqttClient_PublishBlindDirStat(&blinds[channel]);
-                        MqttClient_PublishBlindDirCmd(&blinds[channel]);
+                        blinds[blindCh_u8].blinddirection = blinddirection_off;
+                        Dio_SetBlindDirection(&blinds[blindCh_u8]);
+                        MqttClient_PublishBlindDirStat(&blinds[blindCh_u8]);
+                        MqttClient_PublishBlindDirCmd(&blinds[blindCh_u8]);
                     }
                 }
             }
             break;
         case blinddirection_down:
         	//moving down is faster, so add a factor to the real time
-            if(blinds[channel].angle_function_active)
+            if(blinds[blindCh_u8].angle_function_active)
             {
-                if(blinds[channel].angle_actual<blinds[channel].angle_movingtime) //increment angle if not at end position
+                if(blinds[blindCh_u8].angle_actual<blinds[blindCh_u8].angle_movingtime) //increment angle if not at end position
                 {
-                    blinds[channel].angle_actual += xTaskGetTickCount() - blinds[channel].starttime; //timeposition in ms
-                    blinds[channel].angle_changed = true;
+                    blinds[blindCh_u8].angle_actual += xTaskGetTickCount() - blinds[blindCh_u8].starttime; //timeposition in ms
+                    blinds[blindCh_u8].angle_changed = true;
                 }
-                else if(blinds[channel].angle_actual == blinds[channel].angle_movingtime)
+                else if(blinds[blindCh_u8].angle_actual == blinds[blindCh_u8].angle_movingtime)
                 {
-                    blinds[channel].angle_actual = blinds[channel].angle_movingtime;
+                    blinds[blindCh_u8].angle_actual = blinds[blindCh_u8].angle_movingtime;
                 }
                 else
                 {
-                    blinds[channel].angle_actual = blinds[channel].angle_movingtime;
-                    blinds[channel].angle_changed = true;
+                    blinds[blindCh_u8].angle_actual = blinds[blindCh_u8].angle_movingtime;
+                    blinds[blindCh_u8].angle_changed = true;
                 }
             }
 
-            deltaPosition = xTaskGetTickCount() - blinds[channel].starttime;
+            deltaPosition = xTaskGetTickCount() - blinds[blindCh_u8].starttime;
             if(deltaPosition > 0)
             {
-                factor = (double) (blinds[channel].position_movingtimeup) / (double) (blinds[channel].position_movingtimedown);
+                factor = (double) (blinds[blindCh_u8].position_movingtimeup) / (double) (blinds[blindCh_u8].position_movingtimedown);
                 deltaPosition = round(factor * deltaPosition);
-                blinds[channel].position_actual += deltaPosition;
+                blinds[blindCh_u8].position_actual += deltaPosition;
 
-                blinds[channel].starttime = xTaskGetTickCount();
-                blinds[channel].position_changed = true;
-                if(blinds[channel].position_actual >= blinds[channel].position_target)
+                blinds[blindCh_u8].starttime = xTaskGetTickCount();
+                blinds[blindCh_u8].position_changed = true;
+                if(blinds[blindCh_u8].position_actual >= blinds[blindCh_u8].position_target)
                 {
                     //Target position reached
-                    if(blinds[channel].position_target > blinds[channel].position_movingtimeup)
+                    if(blinds[blindCh_u8].position_target > blinds[blindCh_u8].position_movingtimeup)
                     {
-                        blinds[channel].position_target = blinds[channel].position_movingtimeup;
+                        blinds[blindCh_u8].position_target = blinds[blindCh_u8].position_movingtimeup;
                     }
-                    blinds[channel].position_actual = blinds[channel].position_target;
+                    blinds[blindCh_u8].position_actual = blinds[blindCh_u8].position_target;
 
-                    if(blinds[channel].angle_function_active)
+                    if(blinds[blindCh_u8].angle_function_active)
                     {
-                        blinds[channel].blinddirection = blinddirection_angle_up;
-                        Dio_SetBlindDirection(&blinds[channel]);
+                        blinds[blindCh_u8].blinddirection = blinddirection_angle_up;
+                        Dio_SetBlindDirection(&blinds[blindCh_u8]);
                     }
                     else
                     {
-                        blinds[channel].blinddirection = blinddirection_off;
-                        Dio_SetBlindDirection(&blinds[channel]);
-                        MqttClient_PublishBlindDirStat(&blinds[channel]);
-                        MqttClient_PublishBlindDirCmd(&blinds[channel]);
+                        blinds[blindCh_u8].blinddirection = blinddirection_off;
+                        Dio_SetBlindDirection(&blinds[blindCh_u8]);
+                        MqttClient_PublishBlindDirStat(&blinds[blindCh_u8]);
+                        MqttClient_PublishBlindDirCmd(&blinds[blindCh_u8]);
                     }
                 }
             }
@@ -314,17 +319,17 @@ void dioCheckBlindPosition(uint8_t channel)
     }
 }
 
-void dioTransferDoubleswitch2Blind(uint8_t inputchannel)
+void dioTransferDoubleswitch2Blind(uint8_t dsChannel_u8)
 {
-    if(doubleswitches[inputchannel].changed == true)
+    if(doubleswitches[dsChannel_u8].changed == true)
     {
-        doubleswitches[inputchannel].changed = false;
+        doubleswitches[dsChannel_u8].changed = false;
         for (uint8_t blindchannel = 0; blindchannel < num_blinds; blindchannel++)
         {
-            if((blindinputmatrix[blindchannel]>>inputchannel)&1)
+            if((blindinputmatrix[blindchannel]>>dsChannel_u8)&1)
             {
-                int32_t angletime = (double) blinds[blindchannel].angle_movingtime / (double) 100 * doubleswitches[inputchannel].angle_target;
-                switch(doubleswitches[inputchannel].inputdirection)
+                int32_t angletime = (double) blinds[blindchannel].angle_movingtime / (double) 100 * doubleswitches[dsChannel_u8].angle_target;
+                switch(doubleswitches[dsChannel_u8].inputdirection)
                 {
                     case inputdirection_up_end:
                         break;
@@ -606,11 +611,19 @@ void Dio_StartScanInputTask(void *argument)
     /* Infinite loop */
     for(;;)
     {
-        for(int var = 0; var < num_doubleswitches; var++)
+        for(int var = 0; var < num_blinds; var++)
         {
             dioLearnBlindMovingTime(&blinds[var], blindcurrent_avg);
+        }
+
+        for(int var = 0; var < num_doubleswitches; var++)
+        {
             dioReadDoubleswitch(&doubleswitches[var]);
             dioTransferDoubleswitch2Blind(var);
+        }
+
+        for(int var = 0; var < num_blinds; var++)
+        {
             dioCheckBlindPosition(var);
         }
 
